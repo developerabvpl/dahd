@@ -13,9 +13,17 @@
       <a routerLink="/indents" routerLinkActive="active">Indents</a>
       <a routerLink="/coldchain" routerLinkActive="active">Cold Chain</a>
       <a routerLink="/dispense" routerLinkActive="active">Dispense</a>
+      <a routerLink="/audit" routerLinkActive="active">Audit Log</a>
     </nav>
     <footer>
-      <small>v0.1 &middot; Reference scaffold</small>
+      @if (user(); as u) {
+        <div class="userchip">
+          <div class="name">{{ u.displayName }}</div>
+          <div class="role">{{ u.role }}</div>
+        </div>
+        <button class="logout" (click)="logout()">Sign out</button>
+      }
+      <small>v0.2 &middot; Phase 2</small>
     </footer>
   </aside>
   <main class="content">

@@ -1,6 +1,7 @@
 using Dahd.Application;
 using Dahd.Domain.Enums;
 using Dahd.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +9,7 @@ namespace Dahd.Api.Controllers;
 
 [ApiController]
 [Route("api/dashboard")]
+[Authorize(Roles = AppRoles.AnyAuthenticated)]
 public class DashboardController(DahdDbContext db) : ControllerBase
 {
     [HttpGet("kpis")]

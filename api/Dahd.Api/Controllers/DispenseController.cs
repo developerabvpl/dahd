@@ -1,6 +1,9 @@
 using Dahd.Application;
+using Dahd.Application.Abstractions;
 using Dahd.Domain.Entities;
+using Dahd.Domain.Enums;
 using Dahd.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,7 +11,8 @@ namespace Dahd.Api.Controllers;
 
 [ApiController]
 [Route("api/dispense")]
-public class DispenseController(DahdDbContext db) : ControllerBase
+[Authorize(Roles = AppRoles.AnyAuthenticated)]
+public class DispenseController(DahdDbContext db, IAuditLogger audit) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<DispenseEventDto>>> Get(
@@ -29,6 +33,7 @@ public class DispenseController(DahdDbContext db) : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = AppRoles.Dispense)]
     public async Task<ActionResult<DispenseEventDto>> Create([FromBody] CreateDispenseRequest req, CancellationToken ct)
     {
         var batch = await db.Batches.Include(b => b.Drug).FirstOrDefaultAsync(b => b.Id == req.BatchId, ct);
@@ -65,7 +70,10 @@ public class DispenseController(DahdDbContext db) : ControllerBase
 
         ev.Batch = batch;
         ev.Facility = facility;
-        return Ok(ToDto(ev));
+        var dto = ToDto(ev);
+        await audit.LogAsync(nameof(DispenseEvent), ev.Id, "Create", after: dto,
+            summary: $"Dispensed {ev.Quantity} of {batch.Drug.Code}/{batch.BatchNumber} at {facility.Code}", ct: ct);
+        return Ok(dto);
     }
 
     private static DispenseEventDto ToDto(DispenseEvent d) => new(

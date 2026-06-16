@@ -15,6 +15,9 @@ public class DahdDbContext : DbContext
     public DbSet<IndentLine> IndentLines => Set<IndentLine>();
     public DbSet<ColdChainLog> ColdChainLogs => Set<ColdChainLog>();
     public DbSet<DispenseEvent> DispenseEvents => Set<DispenseEvent>();
+    public DbSet<AppUser> Users => Set<AppUser>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -94,6 +97,39 @@ public class DahdDbContext : DbContext
             e.HasIndex(d => d.DispensedAt);
             e.HasOne(d => d.Batch).WithMany().HasForeignKey(d => d.BatchId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(d => d.Facility).WithMany().HasForeignKey(d => d.FacilityId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AppUser>(e =>
+        {
+            e.HasIndex(u => u.Username).IsUnique();
+            e.Property(u => u.Username).HasMaxLength(80).IsRequired();
+            e.Property(u => u.DisplayName).HasMaxLength(200);
+            e.Property(u => u.Email).HasMaxLength(200);
+            e.Property(u => u.PasswordHash).HasMaxLength(200).IsRequired();
+            e.HasOne(u => u.Warehouse).WithMany().HasForeignKey(u => u.WarehouseId).OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(u => u.Facility).WithMany().HasForeignKey(u => u.FacilityId).OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<RefreshToken>(e =>
+        {
+            e.Property(t => t.TokenHash).HasMaxLength(128).IsRequired();
+            e.Property(t => t.ReplacedByTokenHash).HasMaxLength(128);
+            e.HasIndex(t => t.TokenHash).IsUnique();
+            e.HasOne(t => t.User).WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.Ignore(t => t.IsActive);
+        });
+
+        modelBuilder.Entity<AuditEvent>(e =>
+        {
+            e.Property(a => a.EntityType).HasMaxLength(80).IsRequired();
+            e.Property(a => a.Action).HasMaxLength(80).IsRequired();
+            e.Property(a => a.ActorUsername).HasMaxLength(80);
+            e.Property(a => a.ActorRole).HasMaxLength(40);
+            e.Property(a => a.IpAddress).HasMaxLength(64);
+            e.Property(a => a.CorrelationId).HasMaxLength(128);
+            e.Property(a => a.Summary).HasMaxLength(500);
+            e.HasIndex(a => a.OccurredAt);
+            e.HasIndex(a => new { a.EntityType, a.EntityId });
         });
 
         base.OnModelCreating(modelBuilder);

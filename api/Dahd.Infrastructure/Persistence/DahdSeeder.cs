@@ -1,13 +1,18 @@
+using Dahd.Application.Abstractions;
 using Dahd.Domain.Entities;
 using Dahd.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Dahd.Infrastructure.Persistence;
 
 public static class DahdSeeder
 {
-    public static async Task SeedAsync(DahdDbContext db, CancellationToken ct = default)
+    public static async Task SeedAsync(IServiceProvider sp, CancellationToken ct = default)
     {
+        var db = sp.GetRequiredService<DahdDbContext>();
+        var hasher = sp.GetRequiredService<IPasswordHasher>();
+
         await db.Database.MigrateAsync(ct);
 
         if (!await db.Drugs.AnyAsync(ct))
@@ -26,7 +31,23 @@ public static class DahdSeeder
         }
 
         await db.SaveChangesAsync(ct);
+
+        if (!await db.Users.AnyAsync(ct))
+        {
+            db.Users.AddRange(BuildUsers(hasher));
+            await db.SaveChangesAsync(ct);
+        }
     }
+
+    private static List<AppUser> BuildUsers(IPasswordHasher hasher) =>
+    [
+        new() { Username = "admin",     DisplayName = "System Administrator", Role = AppRole.Admin,             PasswordHash = hasher.Hash("admin123") },
+        new() { Username = "director",  DisplayName = "Director AHD (Demo)",   Role = AppRole.Director,          PasswordHash = hasher.Hash("director123") },
+        new() { Username = "cvo",       DisplayName = "CVO Lucknow (Demo)",    Role = AppRole.Cvo,               PasswordHash = hasher.Hash("cvo123") },
+        new() { Username = "wh",        DisplayName = "Warehouse In-Charge",   Role = AppRole.WarehouseIncharge, PasswordHash = hasher.Hash("wh123") },
+        new() { Username = "vet",       DisplayName = "Facility Veterinarian", Role = AppRole.FacilityVet,       PasswordHash = hasher.Hash("vet123") },
+        new() { Username = "mvuvet",    DisplayName = "MVU Veterinarian",      Role = AppRole.MvuVet,            PasswordHash = hasher.Hash("mvu123") }
+    ];
 
     private static List<Drug> BuildDrugs() =>
     [

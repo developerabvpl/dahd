@@ -1,0 +1,37 @@
+<h2>Audit Log</h2>
+<p style="color:#6b7d90; margin-bottom:1.25rem">Append-only voucher-grade audit trail. Captures actor, role, IP, correlation id, and before/after snapshot for every state-changing action across the system.</p>
+
+<div class="card">
+  @if (loading()) {
+    <p>Loading...</p>
+  } @else if (events().length === 0) {
+    <p>No audit events yet. Take any action (login, create a drug/batch/indent, transition an indent) and refresh.</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Entity</th>
+          <th>Action</th>
+          <th>Actor</th>
+          <th>Role</th>
+          <th>IP</th>
+          <th>Summary</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (e of events(); track e.id) {
+          <tr>
+            <td>{{ e.occurredAt }}</td>
+            <td><span class="badge">{{ e.entityType }}</span></td>
+            <td><span class="badge">{{ e.action }}</span></td>
+            <td>{{ e.actorUsername }}</td>
+            <td>{{ e.actorRole }}</td>
+            <td>{{ e.ipAddress }}</td>
+            <td>{{ e.summary }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

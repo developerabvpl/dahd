@@ -1,6 +1,9 @@
 using Dahd.Application;
+using Dahd.Application.Abstractions;
 using Dahd.Domain.Entities;
+using Dahd.Domain.Enums;
 using Dahd.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,7 +11,8 @@ namespace Dahd.Api.Controllers;
 
 [ApiController]
 [Route("api/warehouses")]
-public class WarehousesController(DahdDbContext db) : ControllerBase
+[Authorize(Roles = AppRoles.AnyAuthenticated)]
+public class WarehousesController(DahdDbContext db, IAuditLogger audit) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<WarehouseDto>>> Get(CancellationToken ct)
@@ -25,6 +29,7 @@ public class WarehousesController(DahdDbContext db) : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = AppRoles.ManageMasterData)]
     public async Task<ActionResult<WarehouseDto>> Create([FromBody] CreateWarehouseRequest req, CancellationToken ct)
     {
         if (await db.Warehouses.AnyAsync(w => w.Code == req.Code, ct))
@@ -45,6 +50,8 @@ public class WarehousesController(DahdDbContext db) : ControllerBase
         };
         db.Warehouses.Add(w);
         await db.SaveChangesAsync(ct);
+        await audit.LogAsync(nameof(Warehouse), w.Id, "Create", after: ToDto(w),
+            summary: $"Warehouse {w.Code} created", ct: ct);
         return CreatedAtAction(nameof(GetById), new { id = w.Id }, ToDto(w));
     }
 

@@ -1,6 +1,9 @@
 using Dahd.Application;
+using Dahd.Application.Abstractions;
 using Dahd.Domain.Entities;
+using Dahd.Domain.Enums;
 using Dahd.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,7 +11,8 @@ namespace Dahd.Api.Controllers;
 
 [ApiController]
 [Route("api/coldchain")]
-public class ColdChainController(DahdDbContext db) : ControllerBase
+[Authorize(Roles = AppRoles.AnyAuthenticated)]
+public class ColdChainController(DahdDbContext db, IAuditLogger audit) : ControllerBase
 {
     private const decimal MinAllowed = 2m;
     private const decimal MaxAllowed = 8m;
@@ -30,6 +34,7 @@ public class ColdChainController(DahdDbContext db) : ControllerBase
     }
 
     [HttpPost("logs")]
+    [Authorize(Roles = AppRoles.IssueOrReceive)]
     public async Task<ActionResult<ColdChainLogDto>> CreateLog([FromBody] CreateColdChainLogRequest req, CancellationToken ct)
     {
         var wh = await db.Warehouses.FindAsync([req.WarehouseId], ct);
@@ -48,6 +53,13 @@ public class ColdChainController(DahdDbContext db) : ControllerBase
         db.ColdChainLogs.Add(log);
         await db.SaveChangesAsync(ct);
         log.Warehouse = wh;
+        if (log.IsBreach)
+        {
+            await audit.LogAsync(nameof(ColdChainLog), log.Id, "Breach",
+                after: new { log.TemperatureCelsius, log.DeviceId, log.WarehouseId },
+                summary: $"Cold-chain breach at {wh.Code} device {log.DeviceId}: {log.TemperatureCelsius} °C",
+                ct: ct);
+        }
         return Ok(ToDto(log));
     }
 

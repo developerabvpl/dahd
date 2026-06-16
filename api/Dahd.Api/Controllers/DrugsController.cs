@@ -1,6 +1,9 @@
 using Dahd.Application;
+using Dahd.Application.Abstractions;
 using Dahd.Domain.Entities;
+using Dahd.Domain.Enums;
 using Dahd.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,7 +11,8 @@ namespace Dahd.Api.Controllers;
 
 [ApiController]
 [Route("api/drugs")]
-public class DrugsController(DahdDbContext db) : ControllerBase
+[Authorize(Roles = AppRoles.AnyAuthenticated)]
+public class DrugsController(DahdDbContext db, IAuditLogger audit) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<DrugDto>>> Get(
@@ -32,6 +36,7 @@ public class DrugsController(DahdDbContext db) : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = AppRoles.ManageMasterData)]
     public async Task<ActionResult<DrugDto>> Create([FromBody] CreateDrugRequest req, CancellationToken ct)
     {
         if (await db.Drugs.AnyAsync(d => d.Code == req.Code, ct))
@@ -53,6 +58,8 @@ public class DrugsController(DahdDbContext db) : ControllerBase
         };
         db.Drugs.Add(drug);
         await db.SaveChangesAsync(ct);
+        await audit.LogAsync(nameof(Drug), drug.Id, "Create", after: ToDto(drug),
+            summary: $"Drug {drug.Code} created", ct: ct);
         return CreatedAtAction(nameof(GetById), new { id = drug.Id }, ToDto(drug));
     }
 

@@ -1,0 +1,42 @@
+<div class="login-wrap">
+  <div class="login-card">
+    <h1>DAHD</h1>
+    <p class="sub">UP Veterinary Pharmacy MIS — sign in</p>
+
+    <form (ngSubmit)="submit()" #f="ngForm">
+      <label>
+        <span>Username</span>
+        <input name="username" [(ngModel)]="username" autocomplete="username" required />
+      </label>
+      <label>
+        <span>Password</span>
+        <input name="password" type="password" [(ngModel)]="password" autocomplete="current-password" required />
+      </label>
+
+      @if (error()) {
+        <div class="err">{{ error() }}</div>
+      }
+
+      <button type="submit" class="primary" [disabled]="busy() || f.invalid">
+        {{ busy() ? 'Signing in...' : 'Sign in' }}
+      </button>
+    </form>
+
+    <details class="demo">
+      <summary>Demo accounts</summary>
+      <table>
+        <thead><tr><th>User</th><th>Password</th><th>Role</th><th></th></tr></thead>
+        <tbody>
+          @for (d of demoUsers; track d.user) {
+            <tr>
+              <td>{{ d.user }}</td>
+              <td><code>{{ d.pass }}</code></td>
+              <td>{{ d.role }}</td>
+              <td><button type="button" (click)="fill(d.user, d.pass)">Use</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </details>
+  </div>
+</div>

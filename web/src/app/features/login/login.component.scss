@@ -1,0 +1,75 @@
+.login-wrap {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(160deg, #0f2138 0%, #1e4f9c 100%);
+  padding: 1rem;
+}
+
+.login-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  padding: 2rem 2.25rem;
+  width: 100%;
+  max-width: 460px;
+
+  h1 { margin: 0; font-size: 2rem; letter-spacing: 0.05em; color: #0f2138; }
+  .sub { margin: 0.25rem 0 1.5rem; color: #6b7d90; font-size: 0.9rem; }
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      font-size: 0.85rem;
+      color: #4a5b6c;
+
+      input {
+        padding: 0.55rem 0.7rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-size: 0.95rem;
+
+        &:focus { outline: none; border-color: #2c66c4; box-shadow: 0 0 0 3px rgba(44, 102, 196, 0.15); }
+      }
+    }
+
+    button.primary {
+      margin-top: 0.5rem;
+      padding: 0.65rem;
+      font-size: 0.95rem;
+    }
+
+    .err {
+      background: #fee2e2;
+      color: #991b1b;
+      padding: 0.55rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+  }
+
+  details.demo {
+    margin-top: 1.5rem;
+    border-top: 1px solid #e5eaf0;
+    padding-top: 1rem;
+
+    summary { cursor: pointer; color: #6b7d90; font-size: 0.85rem; }
+
+    table { margin-top: 0.6rem; font-size: 0.82rem; }
+    td button {
+      background: none;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      padding: 0.2rem 0.55rem;
+      cursor: pointer;
+      font-size: 0.78rem;
+    }
+    td code { background: #f4f6fa; padding: 0.1rem 0.35rem; border-radius: 3px; }
+  }
+}

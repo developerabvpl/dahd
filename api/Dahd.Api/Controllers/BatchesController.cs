@@ -1,7 +1,9 @@
 using Dahd.Application;
+using Dahd.Application.Abstractions;
 using Dahd.Domain.Entities;
 using Dahd.Domain.Enums;
 using Dahd.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,7 +11,8 @@ namespace Dahd.Api.Controllers;
 
 [ApiController]
 [Route("api/batches")]
-public class BatchesController(DahdDbContext db) : ControllerBase
+[Authorize(Roles = AppRoles.AnyAuthenticated)]
+public class BatchesController(DahdDbContext db, IAuditLogger audit) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<BatchDto>>> Get(
@@ -43,6 +46,7 @@ public class BatchesController(DahdDbContext db) : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = AppRoles.IssueOrReceive)]
     public async Task<ActionResult<BatchDto>> Create([FromBody] CreateBatchRequest req, CancellationToken ct)
     {
         var drug = await db.Drugs.FindAsync([req.DrugId], ct);
@@ -75,7 +79,10 @@ public class BatchesController(DahdDbContext db) : ControllerBase
 
         batch.Drug = drug;
         batch.CurrentWarehouse = wh;
-        return CreatedAtAction(nameof(GetById), new { id = batch.Id }, ToDto(batch, DateOnly.FromDateTime(DateTime.UtcNow)));
+        var dto = ToDto(batch, DateOnly.FromDateTime(DateTime.UtcNow));
+        await audit.LogAsync(nameof(Batch), batch.Id, "Create", after: dto,
+            summary: $"Batch {batch.BatchNumber} of {drug.Code} ({batch.Quantity} @ {wh.Code})", ct: ct);
+        return CreatedAtAction(nameof(GetById), new { id = batch.Id }, dto);
     }
 
     private static BatchDto ToDto(Batch b, DateOnly today) => new(

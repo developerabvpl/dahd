@@ -1,7 +1,9 @@
 using Dahd.Application;
+using Dahd.Application.Abstractions;
 using Dahd.Domain.Entities;
 using Dahd.Domain.Enums;
 using Dahd.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,7 +11,8 @@ namespace Dahd.Api.Controllers;
 
 [ApiController]
 [Route("api/indents")]
-public class IndentsController(DahdDbContext db) : ControllerBase
+[Authorize(Roles = AppRoles.AnyAuthenticated)]
+public class IndentsController(DahdDbContext db, IAuditLogger audit) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<IndentDto>>> Get(
@@ -41,6 +44,7 @@ public class IndentsController(DahdDbContext db) : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = AppRoles.IssueOrReceive)]
     public async Task<ActionResult<IndentDto>> Create([FromBody] CreateIndentRequest req, CancellationToken ct)
     {
         if (req.Lines is null || req.Lines.Count == 0)
@@ -62,24 +66,30 @@ public class IndentsController(DahdDbContext db) : ControllerBase
         };
         db.Indents.Add(indent);
         await db.SaveChangesAsync(ct);
+        await audit.LogAsync(nameof(Indent), indent.Id, "Create", after: new { indent.IndentNumber, LineCount = indent.Lines.Count },
+            summary: $"Indent {indent.IndentNumber} drafted ({indent.Lines.Count} lines)", ct: ct);
         return CreatedAtAction(nameof(GetById), new { id = indent.Id }, await Reload(indent.Id, ct));
     }
 
     [HttpPost("{id:guid}/submit")]
-    public async Task<ActionResult<IndentDto>> Submit(Guid id, CancellationToken ct)
-        => await Transition(id, IndentStatus.Draft, IndentStatus.Submitted, i => i.SubmittedAt = DateTime.UtcNow, ct);
+    [Authorize(Roles = AppRoles.IssueOrReceive)]
+    public Task<ActionResult<IndentDto>> Submit(Guid id, CancellationToken ct)
+        => Transition(id, IndentStatus.Draft, IndentStatus.Submitted, i => i.SubmittedAt = DateTime.UtcNow, ct);
 
     [HttpPost("{id:guid}/approve")]
-    public async Task<ActionResult<IndentDto>> Approve(Guid id, CancellationToken ct)
-        => await Transition(id, IndentStatus.Submitted, IndentStatus.Approved, i => i.ApprovedAt = DateTime.UtcNow, ct);
+    [Authorize(Roles = AppRoles.ApproveIndents)]
+    public Task<ActionResult<IndentDto>> Approve(Guid id, CancellationToken ct)
+        => Transition(id, IndentStatus.Submitted, IndentStatus.Approved, i => i.ApprovedAt = DateTime.UtcNow, ct);
 
     [HttpPost("{id:guid}/issue")]
-    public async Task<ActionResult<IndentDto>> Issue(Guid id, CancellationToken ct)
-        => await Transition(id, IndentStatus.Approved, IndentStatus.Issued, i => i.IssuedAt = DateTime.UtcNow, ct);
+    [Authorize(Roles = AppRoles.IssueOrReceive)]
+    public Task<ActionResult<IndentDto>> Issue(Guid id, CancellationToken ct)
+        => Transition(id, IndentStatus.Approved, IndentStatus.Issued, i => i.IssuedAt = DateTime.UtcNow, ct);
 
     [HttpPost("{id:guid}/receive")]
-    public async Task<ActionResult<IndentDto>> Receive(Guid id, CancellationToken ct)
-        => await Transition(id, IndentStatus.Issued, IndentStatus.Received, i => i.ReceivedAt = DateTime.UtcNow, ct);
+    [Authorize(Roles = AppRoles.IssueOrReceive)]
+    public Task<ActionResult<IndentDto>> Receive(Guid id, CancellationToken ct)
+        => Transition(id, IndentStatus.Issued, IndentStatus.Received, i => i.ReceivedAt = DateTime.UtcNow, ct);
 
     private async Task<ActionResult<IndentDto>> Transition(
         Guid id, IndentStatus from, IndentStatus to, Action<Indent> mutate, CancellationToken ct)
@@ -90,6 +100,9 @@ public class IndentsController(DahdDbContext db) : ControllerBase
         i.Status = to;
         mutate(i);
         await db.SaveChangesAsync(ct);
+        await audit.LogAsync(nameof(Indent), id, $"Transition:{from}->{to}",
+            before: new { Status = from }, after: new { Status = to },
+            summary: $"Indent {i.IndentNumber} moved {from} -> {to}", ct: ct);
         return Ok(await Reload(id, ct));
     }
 

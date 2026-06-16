@@ -84,3 +84,20 @@ public record DashboardKpiDto(
     int TotalDrugs, int TotalVaccines, int TotalWarehouses, int TotalFacilities,
     int ActiveBatches, int BatchesNearExpiry30Days, int BatchesExpired,
     int OpenIndents, int ColdChainBreachesLast24h, int DispenseEventsLast30Days);
+
+public record LoginRequest(string Username, string Password);
+public record RefreshRequest(string RefreshToken);
+public record AuthResponse(
+    string AccessToken, DateTime AccessExpiresAt,
+    string RefreshToken, DateTime RefreshExpiresAt,
+    UserDto User);
+
+public record UserDto(
+    Guid Id, string Username, string DisplayName, string? Email,
+    AppRole Role, Guid? WarehouseId, Guid? FacilityId);
+
+public record AuditEventDto(
+    Guid Id, DateTime OccurredAt, string EntityType, Guid EntityId, string Action,
+    Guid? ActorUserId, string? ActorUsername, string? ActorRole,
+    string? IpAddress, string? CorrelationId, string? Summary,
+    string? BeforeJson, string? AfterJson);

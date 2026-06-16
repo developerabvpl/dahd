@@ -1,6 +1,8 @@
 using Dahd.Application;
 using Dahd.Domain.Entities;
+using Dahd.Domain.Enums;
 using Dahd.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +10,7 @@ namespace Dahd.Api.Controllers;
 
 [ApiController]
 [Route("api/facilities")]
+[Authorize(Roles = AppRoles.AnyAuthenticated)]
 public class FacilitiesController(DahdDbContext db) : ControllerBase
 {
     [HttpGet]
