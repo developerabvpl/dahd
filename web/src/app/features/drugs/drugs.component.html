@@ -1,0 +1,37 @@
+<h2>Drugs &amp; Vaccines</h2>
+<p style="color:#6b7d90; margin-bottom:1.25rem">Formulary master — includes FMD, Brucella S19, and the 8 ASCAD vaccines plus core veterinary drugs.</p>
+
+<div class="card">
+  @if (loading()) {
+    <p>Loading...</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Name</th>
+          <th>Class</th>
+          <th>Vaccine</th>
+          <th>Cold-Chain</th>
+          <th>UoM</th>
+          <th>Storage °C</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (d of drugs(); track d.id) {
+          <tr>
+            <td>{{ d.code }}</td>
+            <td>{{ d.name }}</td>
+            <td>{{ d.formularyClass }}</td>
+            <td>@if (d.isVaccine) { <span class="badge ok">YES</span> } @else { <span class="badge">no</span> }</td>
+            <td>@if (d.coldChainRequired) { <span class="badge warn">2–8 °C</span> } @else { <span class="badge">RT</span> }</td>
+            <td>{{ d.unitOfMeasure }}</td>
+            <td>
+              @if (d.storageTempMinCelsius != null) { {{ d.storageTempMinCelsius }} – {{ d.storageTempMaxCelsius }} }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

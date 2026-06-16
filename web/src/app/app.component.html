@@ -1,0 +1,24 @@
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <h1>DAHD</h1>
+      <p>UP Veterinary Pharmacy MIS</p>
+    </div>
+    <nav>
+      <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+      <a routerLink="/drugs" routerLinkActive="active">Drugs &amp; Vaccines</a>
+      <a routerLink="/warehouses" routerLinkActive="active">Warehouses</a>
+      <a routerLink="/facilities" routerLinkActive="active">Facilities &amp; MVU</a>
+      <a routerLink="/batches" routerLinkActive="active">Batches</a>
+      <a routerLink="/indents" routerLinkActive="active">Indents</a>
+      <a routerLink="/coldchain" routerLinkActive="active">Cold Chain</a>
+      <a routerLink="/dispense" routerLinkActive="active">Dispense</a>
+    </nav>
+    <footer>
+      <small>v0.1 &middot; Reference scaffold</small>
+    </footer>
+  </aside>
+  <main class="content">
+    <router-outlet />
+  </main>
+</div>

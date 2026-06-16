@@ -1,0 +1,35 @@
+<h2>Indents</h2>
+<p style="color:#6b7d90; margin-bottom:1.25rem">Indent flow: Draft → Submitted → Approved → Issued → Received → Closed. Each transition is a separate API call (modelled on RMSC quarterly-PO cycle).</p>
+
+<div class="card">
+  @if (loading()) {
+    <p>Loading...</p>
+  } @else if (indents().length === 0) {
+    <p>No indents yet. Create one via POST /api/indents in Swagger.</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>Indent No.</th>
+          <th>Raised By</th>
+          <th>Fulfilled By</th>
+          <th>Status</th>
+          <th>Lines</th>
+          <th>Submitted</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (i of indents(); track i.id) {
+          <tr>
+            <td>{{ i.indentNumber }}</td>
+            <td>{{ i.raisedByWarehouseName }}</td>
+            <td>{{ i.fulfilledByWarehouseName }}</td>
+            <td><span class="badge {{ statusBadge(i.status) }}">{{ i.status }}</span></td>
+            <td>{{ i.lines.length }}</td>
+            <td>{{ i.submittedAt }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

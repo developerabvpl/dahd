@@ -1,0 +1,33 @@
+<h2>Facilities &amp; MVU</h2>
+<p style="color:#6b7d90; margin-bottom:1.25rem">Veterinary hospitals, dispensaries, AI sub-centres, gaushalas, and the 520 Mobile Veterinary Units under 1962.</p>
+
+<div class="card">
+  @if (loading()) {
+    <p>Loading...</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Division</th>
+          <th>District</th>
+          <th>MVU Reg.</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (f of facilities(); track f.id) {
+          <tr>
+            <td>{{ f.code }}</td>
+            <td>{{ f.name }}</td>
+            <td><span class="badge">{{ f.type }}</span></td>
+            <td>{{ f.divisionName }}</td>
+            <td>{{ f.districtName }}</td>
+            <td>{{ f.mvuVehicleRegistration }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

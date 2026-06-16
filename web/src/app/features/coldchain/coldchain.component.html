@@ -1,0 +1,33 @@
+<h2>Cold Chain</h2>
+<p style="color:#6b7d90; margin-bottom:1.25rem">Vaccine cold-chain monitoring at 2–8 °C. Breaches flagged automatically. (IoT ingest is Phase-2 — readings are POSTed manually for now.)</p>
+
+<div class="card">
+  @if (loading()) {
+    <p>Loading...</p>
+  } @else if (logs().length === 0) {
+    <p>No temperature readings yet. POST /api/coldchain/logs in Swagger to add one.</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>Warehouse</th>
+          <th>Device</th>
+          <th>Reading At</th>
+          <th>Temperature</th>
+          <th>State</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (l of logs(); track l.id) {
+          <tr>
+            <td>{{ l.warehouseName }}</td>
+            <td>{{ l.deviceName }} ({{ l.deviceId }})</td>
+            <td>{{ l.readingAt }}</td>
+            <td>{{ l.temperatureCelsius }} °C</td>
+            <td>@if (l.isBreach) { <span class="badge bad">BREACH</span> } @else { <span class="badge ok">OK</span> }</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

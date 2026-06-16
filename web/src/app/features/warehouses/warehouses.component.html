@@ -1,0 +1,35 @@
+<h2>Warehouses</h2>
+<p style="color:#6b7d90; margin-bottom:1.25rem">Central → Divisional → District → Facility tiers. Divisions map to the 5 zones of the 1962 ICCC structure.</p>
+
+<div class="card">
+  @if (loading()) {
+    <p>Loading...</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Division</th>
+          <th>District</th>
+          <th>Cold-Chain</th>
+          <th>In-Charge</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (w of warehouses(); track w.id) {
+          <tr>
+            <td>{{ w.code }}</td>
+            <td>{{ w.name }}</td>
+            <td><span class="badge">{{ w.type }}</span></td>
+            <td>{{ w.divisionName }}</td>
+            <td>{{ w.districtName }}</td>
+            <td>@if (w.coldChainCapable) { <span class="badge ok">YES</span> } @else { <span class="badge">no</span> }</td>
+            <td>{{ w.inchargeName }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

@@ -1,0 +1,39 @@
+<h2>Batches</h2>
+<p style="color:#6b7d90; margin-bottom:1.25rem">Batch-level stock with expiry tracking. FEFO logic anchors the near-expiry redistribution flow (RMSC template).</p>
+
+<div class="card">
+  @if (loading()) {
+    <p>Loading...</p>
+  } @else if (batches().length === 0) {
+    <p>No batches yet. Add one via POST /api/batches in Swagger.</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>Batch No.</th>
+          <th>Drug</th>
+          <th>Mfg. Date</th>
+          <th>Expiry</th>
+          <th>Qty</th>
+          <th>Warehouse</th>
+          <th>Status</th>
+          <th>Expiry State</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (b of batches(); track b.id) {
+          <tr>
+            <td>{{ b.batchNumber }}</td>
+            <td>{{ b.drugName }}</td>
+            <td>{{ b.manufactureDate }}</td>
+            <td>{{ b.expiryDate }}</td>
+            <td>{{ b.quantity }}</td>
+            <td>{{ b.warehouseName }}</td>
+            <td><span class="badge">{{ b.status }}</span></td>
+            <td><span class="badge {{ expiryBadge(b.daysToExpiry).cls }}">{{ expiryBadge(b.daysToExpiry).text }}</span></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

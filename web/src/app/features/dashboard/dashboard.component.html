@@ -1,0 +1,24 @@
+<h2>Dashboard</h2>
+<p style="color:#6b7d90; margin-bottom:1.25rem">UP Veterinary Pharmacy &amp; Supply-Chain MIS — Phase 1 KPIs</p>
+
+@if (loading()) {
+  <div class="card">Loading...</div>
+} @else if (error()) {
+  <div class="card" style="color:#b91c1c">Failed to reach API: {{ error() }}</div>
+} @else {
+  @let k = kpi();
+  @if (k) {
+    <div class="kpi-grid">
+      <div class="kpi"><div class="label">Drugs</div><div class="value">{{ k.totalDrugs }}</div></div>
+      <div class="kpi"><div class="label">Vaccines</div><div class="value">{{ k.totalVaccines }}</div></div>
+      <div class="kpi"><div class="label">Warehouses</div><div class="value">{{ k.totalWarehouses }}</div></div>
+      <div class="kpi"><div class="label">Facilities</div><div class="value">{{ k.totalFacilities }}</div></div>
+      <div class="kpi"><div class="label">Active Batches</div><div class="value">{{ k.activeBatches }}</div></div>
+      <div class="kpi warn"><div class="label">Near-Expiry (30d)</div><div class="value">{{ k.batchesNearExpiry30Days }}</div></div>
+      <div class="kpi bad"><div class="label">Expired Batches</div><div class="value">{{ k.batchesExpired }}</div></div>
+      <div class="kpi"><div class="label">Open Indents</div><div class="value">{{ k.openIndents }}</div></div>
+      <div class="kpi bad"><div class="label">Cold-Chain Breaches 24h</div><div class="value">{{ k.coldChainBreachesLast24h }}</div></div>
+      <div class="kpi"><div class="label">Dispense Events 30d</div><div class="value">{{ k.dispenseEventsLast30Days }}</div></div>
+    </div>
+  }
+}
