@@ -15,6 +15,7 @@
 | [04](04-vendor-opportunity-map.md) | Vendor opportunity map (synthesis) | Combined demand map, decision-maker sequence, procurement channels, "how to get empanelled" checklist |
 | [05](05-open-questions.md) | Open questions & unverified claims | What did NOT survive adversarial verification; what to chase before any pitch |
 | [06](06-solution-architecture.md) | Reference solution architecture | .NET 9 API + Angular 19 frontend covering Drugs, Warehouses, Indents, Cold-chain, MVU dispensing |
+| [07](07-roadmap-phases.md) | Phased roadmap | Phase 0 (research) → Phase 1 (MVP) → Phase 2 (hardening) → Phase 3 (procurement) → Phase 4 (FEFO/analytics) → Phase 5 (INAPH bridge) → Phase 6 (scale-out). Each phase independently demoable and saleable. |
 
 ## How the research was produced
 
