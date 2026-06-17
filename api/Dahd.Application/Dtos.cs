@@ -179,3 +179,25 @@ public record DraftCampaignIndentsRequest(
 
 public record DraftCampaignIndentsResponse(
     int IndentsCreated, decimal TotalQuantityRequested);
+
+public enum RedistributionUrgency
+{
+    Routine = 1,
+    Watch = 2,
+    Urgent = 3
+}
+
+public record RedistributionSuggestionDto(
+    Guid DonorBatchId, string BatchNumber,
+    Guid DrugId, string DrugCode, string DrugName, bool ColdChainRequired,
+    Guid SourceWarehouseId, string SourceWarehouseCode, string SourceWarehouseName,
+    decimal DonorQuantity, DateOnly ExpiryDate, int DaysToExpiry,
+    Guid RecipientWarehouseId, string RecipientWarehouseCode, string RecipientWarehouseName,
+    decimal RecipientExistingStock, decimal SuggestedQuantity,
+    RedistributionUrgency Urgency, string Rationale);
+
+public record CreateRedistributionIndentRequest(
+    Guid DonorBatchId, Guid RecipientWarehouseId, decimal Quantity);
+
+public record CreateRedistributionIndentResponse(
+    Guid IndentId, string IndentNumber);

@@ -1,0 +1,67 @@
+<h2>Near-Expiry Redistribution</h2>
+<p style="color:#6b7d90; margin-bottom:1rem">Mirrors the verified RMSC mechanic: identify batches approaching expiry and propose inter-warehouse transfers to the recipient with the lowest existing stock (cold-chain capable when the drug requires).</p>
+
+<div class="card" style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap">
+  <strong>Window:</strong>
+  @for (d of [30, 60, 90, 180]; track d) {
+    <button (click)="setWindow(d)" [class.primary]="withinDays() === d">≤ {{ d }} days</button>
+  }
+  <span style="margin-left:1rem">
+    <strong>Filter:</strong>
+    <button (click)="urgencyFilter.set('')" [class.primary]="urgencyFilter() === ''">All ({{ suggestions().length }})</button>
+    <button (click)="urgencyFilter.set('Urgent')" [class.primary]="urgencyFilter() === 'Urgent'">Urgent ({{ urgentCount() }})</button>
+    <button (click)="urgencyFilter.set('Watch')" [class.primary]="urgencyFilter() === 'Watch'">Watch ({{ watchCount() }})</button>
+    <button (click)="urgencyFilter.set('Routine')" [class.primary]="urgencyFilter() === 'Routine'">Routine ({{ routineCount() }})</button>
+  </span>
+</div>
+
+@if (notice()) { <div class="card" style="color:#065f46">{{ notice() }}</div> }
+@if (error())  { <div class="card" style="color:#b91c1c">{{ error() }}</div> }
+
+<div class="card">
+  @if (loading()) {
+    <p>Computing redistribution suggestions...</p>
+  } @else if (filtered().length === 0) {
+    <p>No matching suggestions. Either no batches are near expiry, or every other warehouse is already well-stocked.</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>Urgency</th>
+          <th>Drug</th>
+          <th>Batch</th>
+          <th>From (Source)</th>
+          <th>Donor Qty</th>
+          <th>Expires</th>
+          <th>→ Suggested Recipient</th>
+          <th>Recipient Stock</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (s of filtered(); track identityKey(s)) {
+          <tr>
+            <td><span class="badge {{ urgencyCls(s.urgency) }}">{{ s.urgency }} · {{ s.daysToExpiry }}d</span></td>
+            <td>
+              <strong>{{ s.drugCode }}</strong> — {{ s.drugName }}
+              @if (s.coldChainRequired) { <br><small style="color:#0c4a6e">cold chain 2–8 °C</small> }
+            </td>
+            <td>{{ s.batchNumber }}</td>
+            <td>{{ s.sourceWarehouseCode }} <br><small>{{ s.sourceWarehouseName }}</small></td>
+            <td>{{ s.donorQuantity }}</td>
+            <td>{{ s.expiryDate }}</td>
+            <td>{{ s.recipientWarehouseCode }} <br><small>{{ s.recipientWarehouseName }}</small></td>
+            <td>{{ s.recipientExistingStock }}<br><small style="color:#6b7d90">{{ s.rationale }}</small></td>
+            <td>
+              @if (canCreate()) {
+                <button (click)="create(s)" [disabled]="busyId() === identityKey(s)" class="primary">
+                  {{ busyId() === identityKey(s) ? 'Drafting...' : 'Create transfer' }}
+                </button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>
