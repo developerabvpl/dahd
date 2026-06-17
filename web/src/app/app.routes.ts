@@ -25,6 +25,7 @@ export const routes: Routes = [
       { path: 'stock',       loadComponent: () => import('./features/stock/stock.component').then(m => m.StockComponent) },
       { path: 'indents',     loadComponent: () => import('./features/indents/indents.component').then(m => m.IndentsComponent) },
       { path: 'coldchain',   loadComponent: () => import('./features/coldchain/coldchain.component').then(m => m.ColdchainComponent) },
+      { path: 'coldchain-analytics', loadComponent: () => import('./features/coldchain-analytics/coldchain-analytics.component').then(m => m.ColdchainAnalyticsComponent) },
       { path: 'dispense',    loadComponent: () => import('./features/dispense/dispense.component').then(m => m.DispenseComponent) },
       { path: 'campaigns',   loadComponent: () => import('./features/campaigns/campaigns.component').then(m => m.CampaignsComponent) },
       { path: 'redistribution', loadComponent: () => import('./features/redistribution/redistribution.component').then(m => m.RedistributionComponent) },

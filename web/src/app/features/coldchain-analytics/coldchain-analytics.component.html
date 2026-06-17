@@ -1,0 +1,83 @@
+<h2>Cold-Chain Analytics</h2>
+<p style="color:#6b7d90; margin-bottom:1rem">Per-device Mean Kinetic Temperature (Haynes equation, ΔH 83.144 kJ/mol), time-out-of-spec %, plus a 7×24 breach heatmap. Drives ILR replacement budgeting and time-of-day root-cause analysis.</p>
+
+<div class="card" style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap">
+  <strong>Window:</strong>
+  @for (d of [7, 14, 30, 90]; track d) {
+    <button (click)="days.set(d); load()" [class.primary]="days() === d">{{ d }}d</button>
+  }
+  <span style="margin-left:1rem">
+    <strong>Warehouse:</strong>
+    <select [ngModel]="warehouseId()" (ngModelChange)="warehouseId.set($event); load()">
+      <option value="">All</option>
+      @for (w of warehouses(); track w.id) {
+        <option [value]="w.id">{{ w.code }} — {{ w.name }}</option>
+      }
+    </select>
+  </span>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">Devices ({{ devices().length }})</h3>
+  @if (loading()) {
+    <p>Computing...</p>
+  } @else if (devices().length === 0) {
+    <p>No cold-chain readings in this window. POST to /api/coldchain/logs to populate.</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>Warehouse</th>
+          <th>Device</th>
+          <th>Readings</th>
+          <th>Min / Mean / Max °C</th>
+          <th>MKT °C</th>
+          <th>Out-of-spec %</th>
+          <th>Breaches</th>
+          <th>Last Reading</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (d of devices(); track d.warehouseId + '|' + d.deviceId) {
+          <tr>
+            <td>{{ d.warehouseCode }} <br><small>{{ d.warehouseName }}</small></td>
+            <td>{{ d.deviceName }} <br><small>{{ d.deviceId }}</small></td>
+            <td>{{ d.readingCount }}</td>
+            <td>{{ d.minC }} / {{ d.meanC }} / {{ d.maxC }}</td>
+            <td><span class="badge {{ mktCls(d.mktC) }}">{{ d.mktC }} °C</span></td>
+            <td><span class="badge {{ oosCls(d.timeOutOfSpecPct) }}">{{ d.timeOutOfSpecPct }}%</span></td>
+            <td>{{ d.breachCount }}</td>
+            <td><small>{{ d.lastReading }}</small></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">Breach heatmap · day-of-week × hour</h3>
+  <p style="color:#6b7d90; margin: 0 0 0.6rem">Darker red = more breaches in that hour bucket. Reveals patterns like "every Sunday 3 AM" — usually a generator outage or fridge auto-defrost.</p>
+  @if (heatmapMax() === 0) {
+    <p>No breaches in this window.</p>
+  } @else {
+    <div class="heatmap">
+      <div class="row header">
+        <div class="cell label"></div>
+        @for (h of hours; track h) {
+          <div class="cell label">{{ h }}</div>
+        }
+      </div>
+      @for (dow of dows; track dow) {
+        <div class="row">
+          <div class="cell label">{{ dowLabels[dow] }}</div>
+          @for (h of hours; track h) {
+            <div class="cell" [style.background]="cellShade(dow, h)" [title]="dowLabels[dow] + ' ' + h + ':00 — ' + cellCount(dow, h) + ' breach(es)'">
+              @if (cellCount(dow, h) > 0) { <small>{{ cellCount(dow, h) }}</small> }
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

@@ -216,3 +216,14 @@ public record DraftQuarterlyIndentRequest(
 
 public record DraftQuarterlyIndentResponse(
     Guid? IndentId, string? IndentNumber, int LineCount, decimal TotalQuantity);
+
+public record DeviceAnalyticsRow(
+    Guid WarehouseId, string WarehouseCode, string WarehouseName,
+    string DeviceId, string DeviceName,
+    int ReadingCount, int BreachCount,
+    decimal MinC, decimal MaxC, decimal MeanC, decimal MktC,
+    decimal TimeOutOfSpecPct,
+    DateTime? FirstReading, DateTime? LastReading);
+
+public record BreachHourMatrixCell(
+    int DayOfWeek, int Hour, int BreachCount);

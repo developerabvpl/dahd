@@ -1,0 +1,33 @@
+.heatmap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-x: auto;
+
+  .row {
+    display: grid;
+    grid-template-columns: 60px repeat(24, minmax(28px, 1fr));
+    gap: 2px;
+
+    &.header .cell { font-weight: 600; color: #6b7d90; }
+  }
+
+  .cell {
+    aspect-ratio: 1 / 1;
+    background: #f1f5f9;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: #1c2730;
+
+    &.label {
+      background: transparent;
+      font-size: 0.72rem;
+      color: #6b7d90;
+    }
+
+    small { font-size: 0.7rem; font-weight: 600; }
+  }
+}
