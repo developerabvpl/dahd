@@ -39,7 +39,22 @@
 
       <label>
         <span>Animal Ear-Tag (INAPH ID)</span>
-        <input type="text" name="animalEarTag" [(ngModel)]="draft.animalEarTag" placeholder="e.g. UP-LKO-000123" />
+        <div style="display:flex; gap:0.3rem">
+          <input type="text" name="animalEarTag" [(ngModel)]="draft.animalEarTag" placeholder="e.g. UP-LKO-000123" style="flex:1" />
+          <button type="button" (click)="lookupEarTag()" [disabled]="inaphLookingUp()" style="padding:0.35rem 0.7rem; background:#f4f6fa; border:1px solid #cbd5e1; border-radius:4px; cursor:pointer; font-size:0.78rem">
+            {{ inaphLookingUp() ? '...' : 'Lookup' }}
+          </button>
+        </div>
+        @if (inaphMatch(); as a) {
+          <small style="background:#ecfdf5; border:1px solid #6ee7b7; padding:0.4rem 0.6rem; border-radius:4px; margin-top:0.3rem; display:block">
+            <strong>{{ a.species }} · {{ a.breed }}</strong> · {{ a.ageMonths }}mo {{ a.sex }} · {{ a.village }}, {{ a.district }}
+            @if (a.lastVaccineCode) { <br>Last vaccine: <strong>{{ a.lastVaccineCode }}</strong> on {{ a.lastVaccinationDate }} }
+            <br><em style="opacity:0.7">{{ a.isStub ? '(simulated INAPH response — real DAHD API pending Section 39 PCICDA access)' : 'Live INAPH match' }}</em>
+          </small>
+        }
+        @if (inaphError(); as e) {
+          <small style="color:#b91c1c">{{ e }}</small>
+        }
       </label>
 
       <label>

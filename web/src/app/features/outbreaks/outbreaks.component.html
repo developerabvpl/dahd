@@ -1,0 +1,46 @@
+<h2>Outbreak Alerts</h2>
+<p style="color:#6b7d90; margin-bottom:1rem">Disease-cluster detection from dispense events. Buckets by (diagnosis × species × district) and flags clusters of 3+ events affecting 2+ animals. Designed to surface Section 39 PCICDA reporting candidates to district epidemiologists.</p>
+
+<div class="card" style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap">
+  <strong>Window:</strong>
+  @for (d of [7, 14, 30, 60]; track d) {
+    <button (click)="setDays(d)" [class.primary]="days() === d">{{ d }}d</button>
+  }
+</div>
+
+<div class="card">
+  @if (loading()) {
+    <p>Computing...</p>
+  } @else if (alerts().length === 0) {
+    <p>No clusters meet the alert threshold in this window.</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>Severity</th>
+          <th>Diagnosis</th>
+          <th>Species</th>
+          <th>District</th>
+          <th>Events</th>
+          <th>Distinct Animals</th>
+          <th>First Seen</th>
+          <th>Last Seen</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (a of alerts(); track a.diseaseProxy + '|' + a.species + '|' + a.district) {
+          <tr>
+            <td><span class="badge {{ cls(a.severity) }}">{{ a.severity }}</span></td>
+            <td>{{ a.diseaseProxy }}</td>
+            <td>{{ a.species }}</td>
+            <td>{{ a.district || '—' }}</td>
+            <td>{{ a.eventCount }}</td>
+            <td>{{ a.distinctAnimals }}</td>
+            <td><small>{{ a.firstSeenAt }}</small></td>
+            <td><small>{{ a.lastSeenAt }}</small></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

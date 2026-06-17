@@ -7,6 +7,8 @@ import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { NetworkService } from '../../core/offline/network.service';
 import { OfflineQueueService } from '../../core/offline/offline-queue.service';
+import { InaphService } from '../../core/inaph/inaph.service';
+import { InaphAnimal } from '../../core/inaph/inaph.models';
 import { environment } from '../../../environments/environment';
 import { AnimalSpecies, Batch, DispenseEvent, Facility } from '../../core/models';
 
@@ -36,7 +38,12 @@ export class DispenseComponent implements OnInit, OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly net = inject(NetworkService);
   private readonly queue = inject(OfflineQueueService);
+  private readonly inaph = inject(InaphService);
   private readonly destroy$ = new Subject<void>();
+
+  readonly inaphMatch = signal<InaphAnimal | null>(null);
+  readonly inaphLookingUp = signal(false);
+  readonly inaphError = signal<string | null>(null);
 
   readonly events = signal<DispenseEvent[]>([]);
   readonly batches = signal<Batch[]>([]);
@@ -59,6 +66,31 @@ export class DispenseComponent implements OnInit, OnDestroy {
   draft: DispensePayload = this.blankDraft();
 
   ngOnInit(): void { this.refresh(); }
+
+  lookupEarTag(): void {
+    const tag = (this.draft.animalEarTag ?? '').trim();
+    this.inaphMatch.set(null);
+    this.inaphError.set(null);
+    if (!tag || tag.length < 4) {
+      this.inaphError.set('Enter at least 4 characters of the ear-tag.');
+      return;
+    }
+    this.inaphLookingUp.set(true);
+    this.inaph.lookup(tag).pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: a => {
+          this.inaphLookingUp.set(false);
+          this.inaphMatch.set(a);
+          this.draft.animalSpecies = a.species;
+          if (!this.draft.ownerName && a.ownerName) this.draft.ownerName = a.ownerName;
+          if (!this.draft.ownerMobile && a.ownerMobile) this.draft.ownerMobile = a.ownerMobile;
+        },
+        error: e => {
+          this.inaphLookingUp.set(false);
+          this.inaphError.set(e?.error ?? e?.message ?? 'Lookup failed');
+        }
+      });
+  }
 
   refresh(): void {
     this.loading.set(true);

@@ -30,6 +30,7 @@ export const routes: Routes = [
       { path: 'campaigns',   loadComponent: () => import('./features/campaigns/campaigns.component').then(m => m.CampaignsComponent) },
       { path: 'redistribution', loadComponent: () => import('./features/redistribution/redistribution.component').then(m => m.RedistributionComponent) },
       { path: 'consumption', loadComponent: () => import('./features/consumption/consumption.component').then(m => m.ConsumptionComponent) },
+      { path: 'outbreaks',   loadComponent: () => import('./features/outbreaks/outbreaks.component').then(m => m.OutbreaksComponent) },
       { path: 'vendor',      loadComponent: () => import('./features/vendor-portal/vendor-portal.component').then(m => m.VendorPortalComponent) },
       { path: 'vendors',     loadComponent: () => import('./features/vendors-admin/vendors-admin.component').then(m => m.VendorsAdminComponent) },
       { path: 'audit',       loadComponent: () => import('./features/audit/audit.component').then(m => m.AuditComponent) }

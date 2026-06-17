@@ -227,3 +227,14 @@ public record DeviceAnalyticsRow(
 
 public record BreachHourMatrixCell(
     int DayOfWeek, int Hour, int BreachCount);
+
+public record InaphAnimalDto(
+    string EarTag, AnimalSpecies Species, string? Breed, int? AgeMonths,
+    string Sex, string? OwnerName, string? OwnerMobile, string? Village,
+    string? District, DateOnly? LastVaccinationDate, string? LastVaccineCode,
+    bool RegisteredOnBharatPashudhan, bool IsStub);
+
+public record OutbreakAlertDto(
+    string DiseaseProxy, AnimalSpecies Species,
+    string? District, int EventCount, int DistinctAnimals,
+    DateTime FirstSeenAt, DateTime LastSeenAt, string Severity);
