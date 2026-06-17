@@ -20,6 +20,7 @@ public class DahdDbContext : DbContext
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
     public DbSet<Vendor> Vendors => Set<Vendor>();
     public DbSet<VendorDocument> VendorDocuments => Set<VendorDocument>();
+    public DbSet<ProcurementCampaign> ProcurementCampaigns => Set<ProcurementCampaign>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -166,6 +167,18 @@ public class DahdDbContext : DbContext
             e.Property(d => d.UploadedBy).HasMaxLength(80);
             e.HasOne(d => d.Vendor).WithMany(v => v.Documents).HasForeignKey(d => d.VendorId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(d => new { d.VendorId, d.DocumentType });
+        });
+
+        modelBuilder.Entity<ProcurementCampaign>(e =>
+        {
+            e.Property(c => c.Code).HasMaxLength(40).IsRequired();
+            e.Property(c => c.Name).HasMaxLength(200).IsRequired();
+            e.Property(c => c.TargetCohortDescription).HasMaxLength(500);
+            e.Property(c => c.Notes).HasMaxLength(1000);
+            e.Property(c => c.TargetDoseCount).HasPrecision(18, 2);
+            e.HasIndex(c => c.Code).IsUnique();
+            e.HasIndex(c => c.WindowStart);
+            e.HasOne(c => c.Drug).WithMany().HasForeignKey(c => c.DrugId).OnDelete(DeleteBehavior.Restrict);
         });
 
         base.OnModelCreating(modelBuilder);

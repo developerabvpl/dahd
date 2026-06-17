@@ -1,0 +1,58 @@
+<h2>NADCP Procurement Calendar</h2>
+<p style="color:#6b7d90; margin-bottom:1rem">Pre-loaded with FMD biannual rounds (Sept-Oct, Mar-Apr — 45-day windows, ~520.36 lakh UP doses each) and the annual Brucellosis female-calf cohort. Lead-time-aware: auto-draft Draft indents to every district/facility, sourced from a chosen central or divisional warehouse.</p>
+
+@if (notice()) { <div class="card" style="color:#065f46">{{ notice() }}</div> }
+@if (error())  { <div class="card" style="color:#b91c1c">{{ error() }}</div> }
+
+<div class="card">
+  @if (loading()) {
+    <p>Loading...</p>
+  } @else if (campaigns().length === 0) {
+    <p>No campaigns seeded.</p>
+  } @else {
+    @for (c of campaigns(); track c.id) {
+      <details class="vendor">
+        <summary>
+          <span class="title">{{ c.code }} · {{ c.name }}</span>
+          <span class="badge">{{ c.scheme }}</span>
+          <span class="badge {{ windowState(c).cls }}">{{ windowState(c).text }}</span>
+          <small>
+            @if (c.daysToProcurementStart > 0) { Procurement starts T-{{ c.daysToProcurementStart }}d } @else { Procurement window open }
+          </small>
+          <small style="margin-left:auto">{{ c.indentsDraftedCount }} indents drafted</small>
+        </summary>
+
+        <div class="kv">
+          <div><label>Drug</label><span>{{ c.drugCode }} — {{ c.drugName }}</span></div>
+          <div><label>Window</label><span>{{ c.windowStart }} → {{ c.windowEnd }}</span></div>
+          <div><label>Target Doses</label><span>{{ c.targetDoseCount | number }}</span></div>
+          <div><label>Lead Days</label><span>{{ c.leadDays }} days</span></div>
+          <div><label>Status</label><span>{{ c.status }}</span></div>
+          @if (c.targetCohortDescription) {
+            <div style="grid-column:1 / -1"><label>Cohort</label><span>{{ c.targetCohortDescription }}</span></div>
+          }
+          @if (c.notes) {
+            <div style="grid-column:1 / -1"><label>Notes</label><span>{{ c.notes }}</span></div>
+          }
+        </div>
+
+        @if (canDraft()) {
+          <h4>Auto-draft indents</h4>
+          <div class="action-row">
+            <select [ngModel]="draftSource()[c.id] || ''" (ngModelChange)="setSource(c.id, $event)" name="src-{{ c.id }}">
+              <option value="" disabled>— source warehouse —</option>
+              @for (w of centralOrDivisional(); track w.id) {
+                <option [value]="w.id">{{ w.code }} — {{ w.name }}</option>
+              }
+            </select>
+            <input type="number" min="1" step="1" placeholder="doses per destination"
+                   [ngModel]="draftQty()[c.id] || ''" (ngModelChange)="setQty(c.id, $event)" name="qty-{{ c.id }}" />
+            <button (click)="draft(c)" [disabled]="busyId() === c.id">
+              {{ busyId() === c.id ? 'Drafting...' : 'Draft indents to all districts/facilities' }}
+            </button>
+          </div>
+        }
+      </details>
+    }
+  }
+</div>

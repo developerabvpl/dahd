@@ -158,3 +158,24 @@ public record UploadVendorDocumentRequest(
 public record VendorReviewActionRequest(
     string? Remarks, DateTime? ScheduledInspectionAt,
     DateOnly? EmpanelmentValidUntil, string? BlacklistReason);
+
+public record ProcurementCampaignDto(
+    Guid Id, string Code, string Name, SchemeBucket Scheme,
+    Guid DrugId, string DrugCode, string DrugName,
+    DateOnly WindowStart, DateOnly WindowEnd, int LeadDays,
+    decimal TargetDoseCount, string? TargetCohortDescription,
+    CampaignStatus Status, string? Notes,
+    DateTime? IndentsDraftedAt, int IndentsDraftedCount,
+    int DaysToWindowStart, int DaysToProcurementStart);
+
+public record CreateCampaignRequest(
+    string Code, string Name, SchemeBucket Scheme,
+    Guid DrugId, DateOnly WindowStart, DateOnly WindowEnd,
+    int LeadDays, decimal TargetDoseCount,
+    string? TargetCohortDescription, string? Notes);
+
+public record DraftCampaignIndentsRequest(
+    Guid SourceWarehouseId, decimal QuantityPerDestination);
+
+public record DraftCampaignIndentsResponse(
+    int IndentsCreated, decimal TotalQuantityRequested);

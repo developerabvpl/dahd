@@ -1,5 +1,5 @@
 <h2>Dashboard</h2>
-<p style="color:#6b7d90; margin-bottom:1.25rem">UP Veterinary Pharmacy &amp; Supply-Chain MIS — Phase 1 KPIs</p>
+<p style="color:#6b7d90; margin-bottom:1.25rem">UP Veterinary Pharmacy &amp; Supply-Chain MIS</p>
 
 @if (loading()) {
   <div class="card">Loading...</div>
@@ -21,4 +21,31 @@
       <div class="kpi"><div class="label">Dispense Events 30d</div><div class="value">{{ k.dispenseEventsLast30Days }}</div></div>
     </div>
   }
+
+  <div class="card" style="margin-top:1.25rem">
+    <h3 style="margin-top:0; display:flex; justify-content:space-between; align-items:center">
+      Upcoming vaccination campaigns
+      <a routerLink="/campaigns" style="font-size:0.82rem">View calendar →</a>
+    </h3>
+    @if (upcoming().length === 0) {
+      <p>No upcoming campaigns in the pipeline.</p>
+    } @else {
+      <table>
+        <thead>
+          <tr><th>Code</th><th>Drug</th><th>Window</th><th>Target Doses</th><th>Lead</th></tr>
+        </thead>
+        <tbody>
+          @for (c of upcoming(); track c.id) {
+            <tr>
+              <td><strong>{{ c.code }}</strong></td>
+              <td>{{ c.drugCode }} — {{ c.drugName }}</td>
+              <td>{{ c.windowStart }} → {{ c.windowEnd }}</td>
+              <td>{{ c.targetDoseCount | number }}</td>
+              <td><span class="badge {{ leadCls(c) }}">{{ leadText(c) }}</span></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
 }

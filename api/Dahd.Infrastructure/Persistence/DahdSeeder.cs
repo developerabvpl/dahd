@@ -37,6 +37,67 @@ public static class DahdSeeder
             db.Users.AddRange(BuildUsers(hasher));
             await db.SaveChangesAsync(ct);
         }
+
+        if (!await db.ProcurementCampaigns.AnyAsync(ct))
+        {
+            var fmd = await db.Drugs.FirstOrDefaultAsync(d => d.Code == "FMD-VAX", ct);
+            var bru = await db.Drugs.FirstOrDefaultAsync(d => d.Code == "BRU-S19", ct);
+            if (fmd is not null && bru is not null)
+            {
+                var thisYear = DateOnly.FromDateTime(DateTime.UtcNow).Year;
+                db.ProcurementCampaigns.AddRange(BuildCampaigns(fmd.Id, bru.Id, thisYear));
+                await db.SaveChangesAsync(ct);
+            }
+        }
+    }
+
+    private static List<ProcurementCampaign> BuildCampaigns(Guid fmdId, Guid bruId, int baseYear)
+    {
+        // NADCP demand map anchored in research (docs/02): UP runs ~520.36 lakh
+        // FMD doses per round, twice a year — Sept-Oct and Mar-Apr 45-day windows.
+        // Brucella: annual cohort, 4-8 month female calves, once-in-a-lifetime.
+        var fmdDoses = 52_036_000m;
+        var bruCohort = 1_800_000m;
+
+        ProcurementCampaign fmd(int year, bool fall, string code) => new()
+        {
+            Code = code,
+            Name = $"FMD vaccination round {(fall ? "Sept–Oct" : "Mar–Apr")} {year}",
+            Scheme = SchemeBucket.NadcpFmd,
+            DrugId = fmdId,
+            WindowStart = new DateOnly(year, fall ? 9 : 3, 1),
+            WindowEnd = new DateOnly(year, fall ? 10 : 4, 15),
+            LeadDays = 90,
+            TargetDoseCount = fmdDoses,
+            TargetCohortDescription = "100% of cattle, buffalo, sheep, goat and pig populations",
+            Status = CampaignStatus.Planned,
+            Notes = "NADCP biannual; central-funded; cold-chain cabinets procured by state alongside vaccine."
+        };
+
+        ProcurementCampaign brucella(int year) => new()
+        {
+            Code = $"BRU-{year}",
+            Name = $"Brucellosis annual cohort {year}",
+            Scheme = SchemeBucket.NadcpBrucellosis,
+            DrugId = bruId,
+            WindowStart = new DateOnly(year, 1, 1),
+            WindowEnd = new DateOnly(year, 12, 31),
+            LeadDays = 60,
+            TargetDoseCount = bruCohort,
+            TargetCohortDescription = "100% female bovine calves aged 4–8 months (Brucella abortus S19), once-in-lifetime.",
+            Status = CampaignStatus.Planned,
+            Notes = "Cohort-based annual renewal under NADCP."
+        };
+
+        return
+        [
+            fmd(baseYear, fall: false, $"FMD-{baseYear}-SPRING"),
+            fmd(baseYear, fall: true,  $"FMD-{baseYear}-FALL"),
+            fmd(baseYear + 1, fall: false, $"FMD-{baseYear + 1}-SPRING"),
+            fmd(baseYear + 1, fall: true,  $"FMD-{baseYear + 1}-FALL"),
+            brucella(baseYear),
+            brucella(baseYear + 1)
+        ];
     }
 
     private static List<AppUser> BuildUsers(IPasswordHasher hasher) =>

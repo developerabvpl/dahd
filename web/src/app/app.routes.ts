@@ -26,6 +26,7 @@ export const routes: Routes = [
       { path: 'indents',     loadComponent: () => import('./features/indents/indents.component').then(m => m.IndentsComponent) },
       { path: 'coldchain',   loadComponent: () => import('./features/coldchain/coldchain.component').then(m => m.ColdchainComponent) },
       { path: 'dispense',    loadComponent: () => import('./features/dispense/dispense.component').then(m => m.DispenseComponent) },
+      { path: 'campaigns',   loadComponent: () => import('./features/campaigns/campaigns.component').then(m => m.CampaignsComponent) },
       { path: 'vendor',      loadComponent: () => import('./features/vendor-portal/vendor-portal.component').then(m => m.VendorPortalComponent) },
       { path: 'vendors',     loadComponent: () => import('./features/vendors-admin/vendors-admin.component').then(m => m.VendorsAdminComponent) },
       { path: 'audit',       loadComponent: () => import('./features/audit/audit.component').then(m => m.AuditComponent) }
