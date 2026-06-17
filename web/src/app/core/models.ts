@@ -108,6 +108,29 @@ export interface ColdChainLog {
   temperatureCelsius: number;
   isBreach: boolean;
   remarks?: string;
+  acknowledgedAt?: string;
+  acknowledgedBy?: string;
+  correctiveAction?: string;
+  affectedBatchIdsJson?: string;
+}
+
+export interface AcknowledgeBreachRequest {
+  correctiveAction: string;
+  affectedBatchIds?: string[];
+}
+
+export interface StockByDrugRow {
+  drugId: string;
+  drugCode: string;
+  drugName: string;
+  unitOfMeasure: string;
+  warehouseId: string;
+  warehouseCode: string;
+  warehouseName: string;
+  totalQuantity: number;
+  batchCount: number;
+  batchesExpired: number;
+  batchesNearExpiry30Days: number;
 }
 
 export interface DispenseEvent {

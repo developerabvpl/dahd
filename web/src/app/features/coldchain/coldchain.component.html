@@ -1,5 +1,9 @@
 <h2>Cold Chain</h2>
-<p style="color:#6b7d90; margin-bottom:1.25rem">Vaccine cold-chain monitoring at 2–8 °C. Breaches flagged automatically. (IoT ingest is Phase-2 — readings are POSTed manually for now.)</p>
+<p style="color:#6b7d90; margin-bottom:1rem">Vaccine cold-chain monitoring at 2–8 °C. Breaches require a corrective action acknowledgement. (IoT ingest is Phase 2.4 — readings POSTed manually for now.)</p>
+
+@if (error()) {
+  <div class="card" style="color:#b91c1c">{{ error() }}</div>
+}
 
 <div class="card">
   @if (loading()) {
@@ -13,8 +17,9 @@
           <th>Warehouse</th>
           <th>Device</th>
           <th>Reading At</th>
-          <th>Temperature</th>
+          <th>Temp</th>
           <th>State</th>
+          <th>Acknowledgement</th>
         </tr>
       </thead>
       <tbody>
@@ -24,7 +29,27 @@
             <td>{{ l.deviceName }} ({{ l.deviceId }})</td>
             <td>{{ l.readingAt }}</td>
             <td>{{ l.temperatureCelsius }} °C</td>
-            <td>@if (l.isBreach) { <span class="badge bad">BREACH</span> } @else { <span class="badge ok">OK</span> }</td>
+            <td>
+              @if (!l.isBreach) {
+                <span class="badge ok">OK</span>
+              } @else if (l.acknowledgedAt) {
+                <span class="badge warn">BREACH · acked</span>
+              } @else {
+                <span class="badge bad">BREACH</span>
+              }
+            </td>
+            <td>
+              @if (l.acknowledgedAt) {
+                <small><strong>{{ l.acknowledgedBy }}</strong> — {{ l.correctiveAction }}</small>
+              } @else if (canAck(l)) {
+                <form class="inline" (ngSubmit)="acknowledge(l)">
+                  <input type="text" placeholder="Corrective action..." [ngModel]="ackInput()[l.id] || ''" (ngModelChange)="setAction(l.id, $event)" name="ack-{{ l.id }}" required />
+                  <button type="submit" [disabled]="ackingId() === l.id">Ack</button>
+                </form>
+              } @else if (l.isBreach) {
+                <small style="opacity:0.6">awaiting in-charge ack</small>
+              }
+            </td>
           </tr>
         }
       </tbody>

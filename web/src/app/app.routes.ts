@@ -18,6 +18,7 @@ export const routes: Routes = [
       { path: 'warehouses',  loadComponent: () => import('./features/warehouses/warehouses.component').then(m => m.WarehousesComponent) },
       { path: 'facilities',  loadComponent: () => import('./features/facilities/facilities.component').then(m => m.FacilitiesComponent) },
       { path: 'batches',     loadComponent: () => import('./features/batches/batches.component').then(m => m.BatchesComponent) },
+      { path: 'stock',       loadComponent: () => import('./features/stock/stock.component').then(m => m.StockComponent) },
       { path: 'indents',     loadComponent: () => import('./features/indents/indents.component').then(m => m.IndentsComponent) },
       { path: 'coldchain',   loadComponent: () => import('./features/coldchain/coldchain.component').then(m => m.ColdchainComponent) },
       { path: 'dispense',    loadComponent: () => import('./features/dispense/dispense.component').then(m => m.DispenseComponent) },

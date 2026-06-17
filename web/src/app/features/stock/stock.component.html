@@ -1,0 +1,35 @@
+<h2>Stock by Drug × Warehouse</h2>
+<p style="color:#6b7d90; margin-bottom:1rem">Aggregated in-store quantities. Drives indent approvals (does the source warehouse actually have stock?) and FEFO planning.</p>
+
+<div class="card">
+  @if (loading()) {
+    <p>Loading...</p>
+  } @else if (rows().length === 0) {
+    <p>No in-store stock yet. Create batches via POST /api/batches, or receive an issued indent.</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>Drug</th>
+          <th>Warehouse</th>
+          <th>Total Qty</th>
+          <th>Batches</th>
+          <th>Near-Expiry 30d</th>
+          <th>Expired</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of rows(); track r.drugId + '|' + r.warehouseId) {
+          <tr>
+            <td>{{ r.drugCode }} — {{ r.drugName }}</td>
+            <td>{{ r.warehouseCode }} — {{ r.warehouseName }}</td>
+            <td>{{ r.totalQuantity }} {{ r.unitOfMeasure }}</td>
+            <td>{{ r.batchCount }}</td>
+            <td>@if (r.batchesNearExpiry30Days > 0) { <span class="badge warn">{{ r.batchesNearExpiry30Days }}</span> } @else { 0 }</td>
+            <td>@if (r.batchesExpired > 0) { <span class="badge bad">{{ r.batchesExpired }}</span> } @else { 0 }</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

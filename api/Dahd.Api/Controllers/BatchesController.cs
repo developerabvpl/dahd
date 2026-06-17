@@ -85,6 +85,43 @@ public class BatchesController(DahdDbContext db, IAuditLogger audit) : Controlle
         return CreatedAtAction(nameof(GetById), new { id = batch.Id }, dto);
     }
 
+    [HttpGet("stock-by-drug")]
+    public async Task<ActionResult<IReadOnlyList<StockByDrugRow>>> StockByDrug(
+        [FromQuery] Guid? warehouseId,
+        [FromQuery] Guid? drugId,
+        CancellationToken ct)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var soon = today.AddDays(30);
+
+        var q = db.Batches.AsNoTracking()
+            .Include(b => b.Drug)
+            .Include(b => b.CurrentWarehouse)
+            .Where(b => b.Status == BatchStatus.InStore);
+
+        if (warehouseId.HasValue) q = q.Where(b => b.CurrentWarehouseId == warehouseId);
+        if (drugId.HasValue) q = q.Where(b => b.DrugId == drugId);
+
+        var rows = await q.ToListAsync(ct);
+
+        var summary = rows
+            .GroupBy(b => new
+            {
+                b.DrugId, b.Drug.Code, b.Drug.Name, b.Drug.UnitOfMeasure,
+                WarehouseId = b.CurrentWarehouseId, WarehouseCode = b.CurrentWarehouse.Code, WarehouseName = b.CurrentWarehouse.Name
+            })
+            .Select(g => new StockByDrugRow(
+                g.Key.DrugId, g.Key.Code, g.Key.Name, g.Key.UnitOfMeasure,
+                g.Key.WarehouseId, g.Key.WarehouseCode, g.Key.WarehouseName,
+                g.Sum(x => x.Quantity), g.Count(),
+                g.Count(x => x.ExpiryDate < today),
+                g.Count(x => x.ExpiryDate >= today && x.ExpiryDate <= soon)))
+            .OrderBy(r => r.DrugName).ThenBy(r => r.WarehouseName)
+            .ToList();
+
+        return Ok(summary);
+    }
+
     private static BatchDto ToDto(Batch b, DateOnly today) => new(
         b.Id, b.DrugId, b.Drug.Name, b.BatchNumber,
         b.ManufactureDate, b.ExpiryDate, b.Manufacturer,

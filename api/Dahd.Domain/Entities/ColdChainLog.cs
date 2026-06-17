@@ -13,4 +13,8 @@ public class ColdChainLog : Entity
     public bool IsBreach { get; set; }
     public string? Remarks { get; set; }
     public string? RecordedBy { get; set; }
+    public DateTime? AcknowledgedAt { get; set; }
+    public string? AcknowledgedBy { get; set; }
+    public string? CorrectiveAction { get; set; }
+    public string? AffectedBatchIdsJson { get; set; }
 }

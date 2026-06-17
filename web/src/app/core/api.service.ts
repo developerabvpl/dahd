@@ -3,8 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
-  Batch, ColdChainLog, DashboardKpi, DispenseEvent,
-  Drug, Facility, Indent, Warehouse
+  AcknowledgeBreachRequest, Batch, ColdChainLog, DashboardKpi, DispenseEvent,
+  Drug, Facility, Indent, StockByDrugRow, Warehouse
 } from './models';
 
 @Injectable({ providedIn: 'root' })
@@ -43,16 +43,46 @@ export class ApiService {
     return this.http.get<Batch[]>(`${this.base}/batches`, { params });
   }
 
+  getStockByDrug(opts?: { warehouseId?: string; drugId?: string }): Observable<StockByDrugRow[]> {
+    const params: Record<string, string> = {};
+    if (opts?.warehouseId) params['warehouseId'] = opts.warehouseId;
+    if (opts?.drugId) params['drugId'] = opts.drugId;
+    return this.http.get<StockByDrugRow[]>(`${this.base}/batches/stock-by-drug`, { params });
+  }
+
   getIndents(): Observable<Indent[]> {
     return this.http.get<Indent[]>(`${this.base}/indents`);
   }
 
-  getColdChainLogs(opts?: { warehouseId?: string; breachesOnly?: boolean; hours?: number }): Observable<ColdChainLog[]> {
+  submitIndent(id: string): Observable<Indent> {
+    return this.http.post<Indent>(`${this.base}/indents/${id}/submit`, {});
+  }
+  approveIndent(id: string): Observable<Indent> {
+    return this.http.post<Indent>(`${this.base}/indents/${id}/approve`, {});
+  }
+  issueIndent(id: string): Observable<Indent> {
+    return this.http.post<Indent>(`${this.base}/indents/${id}/issue`, {});
+  }
+  receiveIndent(id: string): Observable<Indent> {
+    return this.http.post<Indent>(`${this.base}/indents/${id}/receive`, {});
+  }
+
+  getColdChainLogs(opts?: {
+    warehouseId?: string;
+    breachesOnly?: boolean;
+    unacknowledgedOnly?: boolean;
+    hours?: number;
+  }): Observable<ColdChainLog[]> {
     const params: Record<string, string> = {};
     if (opts?.warehouseId) params['warehouseId'] = opts.warehouseId;
     if (opts?.breachesOnly) params['breachesOnly'] = 'true';
+    if (opts?.unacknowledgedOnly) params['unacknowledgedOnly'] = 'true';
     if (opts?.hours) params['hours'] = String(opts.hours);
     return this.http.get<ColdChainLog[]>(`${this.base}/coldchain/logs`, { params });
+  }
+
+  acknowledgeBreach(id: string, req: AcknowledgeBreachRequest): Observable<ColdChainLog> {
+    return this.http.post<ColdChainLog>(`${this.base}/coldchain/logs/${id}/acknowledge`, req);
   }
 
   getDispenseEvents(opts?: { facilityId?: string; days?: number }): Observable<DispenseEvent[]> {

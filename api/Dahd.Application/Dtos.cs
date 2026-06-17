@@ -58,14 +58,32 @@ public record CreateIndentRequest(
     Guid RaisedByWarehouseId, Guid FulfilledByWarehouseId,
     string? Remarks, List<CreateIndentLineRequest> Lines);
 
+public record LineApproval(Guid LineId, decimal ApprovedQuantity);
+public record ApproveIndentRequest(List<LineApproval>? LineApprovals);
+
+public record StockByDrugRow(
+    Guid DrugId, string DrugCode, string DrugName, string UnitOfMeasure,
+    Guid WarehouseId, string WarehouseCode, string WarehouseName,
+    decimal TotalQuantity, int BatchCount,
+    int BatchesExpired, int BatchesNearExpiry30Days);
+
 public record ColdChainLogDto(
     Guid Id, Guid WarehouseId, string WarehouseName,
     string DeviceId, string DeviceName, DateTime ReadingAt,
-    decimal TemperatureCelsius, bool IsBreach, string? Remarks);
+    decimal TemperatureCelsius, bool IsBreach, string? Remarks,
+    DateTime? AcknowledgedAt, string? AcknowledgedBy,
+    string? CorrectiveAction, string? AffectedBatchIdsJson);
 
 public record CreateColdChainLogRequest(
     Guid WarehouseId, string DeviceId, string DeviceName,
     DateTime ReadingAt, decimal TemperatureCelsius, string? Remarks);
+
+public record AcknowledgeBreachRequest(string CorrectiveAction, List<Guid>? AffectedBatchIds);
+
+public record ColdChainDailyRollupRow(
+    Guid WarehouseId, string WarehouseName, string DeviceId, string DeviceName,
+    DateOnly Date, int ReadingCount, int BreachCount,
+    decimal MinC, decimal MaxC, decimal MeanC);
 
 public record DispenseEventDto(
     Guid Id, Guid BatchId, string DrugName, string BatchNumber,

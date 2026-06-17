@@ -66,45 +66,158 @@ public class IndentsController(DahdDbContext db, IAuditLogger audit) : Controlle
         };
         db.Indents.Add(indent);
         await db.SaveChangesAsync(ct);
-        await audit.LogAsync(nameof(Indent), indent.Id, "Create", after: new { indent.IndentNumber, LineCount = indent.Lines.Count },
+        await audit.LogAsync(nameof(Indent), indent.Id, "Create",
+            after: new { indent.IndentNumber, LineCount = indent.Lines.Count },
             summary: $"Indent {indent.IndentNumber} drafted ({indent.Lines.Count} lines)", ct: ct);
         return CreatedAtAction(nameof(GetById), new { id = indent.Id }, await Reload(indent.Id, ct));
     }
 
     [HttpPost("{id:guid}/submit")]
     [Authorize(Roles = AppRoles.IssueOrReceive)]
-    public Task<ActionResult<IndentDto>> Submit(Guid id, CancellationToken ct)
-        => Transition(id, IndentStatus.Draft, IndentStatus.Submitted, i => i.SubmittedAt = DateTime.UtcNow, ct);
+    public async Task<ActionResult<IndentDto>> Submit(Guid id, CancellationToken ct)
+    {
+        var indent = await Load(id, ct);
+        if (indent is null) return NotFound();
+        if (indent.Status != IndentStatus.Draft) return Conflict($"Indent status is '{indent.Status}', expected 'Draft'.");
+
+        indent.Status = IndentStatus.Submitted;
+        indent.SubmittedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+
+        await audit.LogAsync(nameof(Indent), id, "Transition:Draft->Submitted",
+            summary: $"Indent {indent.IndentNumber} submitted", ct: ct);
+        return Ok(await Reload(id, ct));
+    }
 
     [HttpPost("{id:guid}/approve")]
     [Authorize(Roles = AppRoles.ApproveIndents)]
-    public Task<ActionResult<IndentDto>> Approve(Guid id, CancellationToken ct)
-        => Transition(id, IndentStatus.Submitted, IndentStatus.Approved, i => i.ApprovedAt = DateTime.UtcNow, ct);
+    public async Task<ActionResult<IndentDto>> Approve(
+        Guid id,
+        [FromBody] ApproveIndentRequest? req,
+        CancellationToken ct)
+    {
+        var indent = await Load(id, ct);
+        if (indent is null) return NotFound();
+        if (indent.Status != IndentStatus.Submitted) return Conflict($"Indent status is '{indent.Status}', expected 'Submitted'.");
+
+        var overrides = req?.LineApprovals?.ToDictionary(x => x.LineId, x => x.ApprovedQuantity) ?? new();
+        foreach (var line in indent.Lines)
+        {
+            line.ApprovedQuantity = overrides.TryGetValue(line.Id, out var qty) ? qty : line.RequestedQuantity;
+        }
+
+        indent.Status = IndentStatus.Approved;
+        indent.ApprovedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+
+        await audit.LogAsync(nameof(Indent), id, "Transition:Submitted->Approved",
+            after: indent.Lines.Select(l => new { l.Id, l.ApprovedQuantity }),
+            summary: $"Indent {indent.IndentNumber} approved ({indent.Lines.Count} lines)", ct: ct);
+        return Ok(await Reload(id, ct));
+    }
 
     [HttpPost("{id:guid}/issue")]
     [Authorize(Roles = AppRoles.IssueOrReceive)]
-    public Task<ActionResult<IndentDto>> Issue(Guid id, CancellationToken ct)
-        => Transition(id, IndentStatus.Approved, IndentStatus.Issued, i => i.IssuedAt = DateTime.UtcNow, ct);
+    public async Task<ActionResult<IndentDto>> Issue(Guid id, CancellationToken ct)
+    {
+        var indent = await Load(id, ct);
+        if (indent is null) return NotFound();
+        if (indent.Status != IndentStatus.Approved) return Conflict($"Indent status is '{indent.Status}', expected 'Approved'.");
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var sourceWarehouseId = indent.FulfilledByWarehouseId;
+
+        foreach (var line in indent.Lines)
+        {
+            var qty = line.ApprovedQuantity ?? line.RequestedQuantity;
+            if (qty <= 0) continue;
+
+            var fefoBatch = await db.Batches
+                .Where(b => b.DrugId == line.DrugId
+                            && b.CurrentWarehouseId == sourceWarehouseId
+                            && b.Status == BatchStatus.InStore
+                            && b.ExpiryDate >= today
+                            && b.Quantity >= qty)
+                .OrderBy(b => b.ExpiryDate)
+                .ThenBy(b => b.ManufactureDate)
+                .FirstOrDefaultAsync(ct);
+
+            if (fefoBatch is null)
+                return BadRequest($"No in-stock batch at source warehouse with {qty} of drug {line.DrugId}.");
+
+            fefoBatch.Quantity -= qty;
+            line.IssuedBatchId = fefoBatch.Id;
+            line.IssuedQuantity = qty;
+        }
+
+        indent.Status = IndentStatus.Issued;
+        indent.IssuedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+
+        await audit.LogAsync(nameof(Indent), id, "Transition:Approved->Issued",
+            after: indent.Lines.Select(l => new { l.Id, l.IssuedBatchId, l.IssuedQuantity }),
+            summary: $"Indent {indent.IndentNumber} issued (FEFO allocated)", ct: ct);
+        return Ok(await Reload(id, ct));
+    }
 
     [HttpPost("{id:guid}/receive")]
     [Authorize(Roles = AppRoles.IssueOrReceive)]
-    public Task<ActionResult<IndentDto>> Receive(Guid id, CancellationToken ct)
-        => Transition(id, IndentStatus.Issued, IndentStatus.Received, i => i.ReceivedAt = DateTime.UtcNow, ct);
-
-    private async Task<ActionResult<IndentDto>> Transition(
-        Guid id, IndentStatus from, IndentStatus to, Action<Indent> mutate, CancellationToken ct)
+    public async Task<ActionResult<IndentDto>> Receive(Guid id, CancellationToken ct)
     {
-        var i = await db.Indents.FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (i is null) return NotFound();
-        if (i.Status != from) return Conflict($"Indent status is '{i.Status}', expected '{from}'.");
-        i.Status = to;
-        mutate(i);
+        var indent = await Load(id, ct);
+        if (indent is null) return NotFound();
+        if (indent.Status != IndentStatus.Issued) return Conflict($"Indent status is '{indent.Status}', expected 'Issued'.");
+
+        var destWarehouseId = indent.RaisedByWarehouseId;
+
+        foreach (var line in indent.Lines)
+        {
+            if (line.IssuedBatchId is null || line.IssuedQuantity is null) continue;
+            var qty = line.IssuedQuantity.Value;
+            var sourceBatch = await db.Batches.AsNoTracking().FirstAsync(b => b.Id == line.IssuedBatchId, ct);
+
+            var existing = await db.Batches.FirstOrDefaultAsync(b =>
+                b.DrugId == sourceBatch.DrugId
+                && b.BatchNumber == sourceBatch.BatchNumber
+                && b.CurrentWarehouseId == destWarehouseId, ct);
+
+            if (existing is not null)
+            {
+                existing.Quantity += qty;
+            }
+            else
+            {
+                db.Batches.Add(new Batch
+                {
+                    DrugId = sourceBatch.DrugId,
+                    BatchNumber = sourceBatch.BatchNumber,
+                    ManufactureDate = sourceBatch.ManufactureDate,
+                    ExpiryDate = sourceBatch.ExpiryDate,
+                    Manufacturer = sourceBatch.Manufacturer,
+                    Quantity = qty,
+                    UnitCost = sourceBatch.UnitCost,
+                    CurrentWarehouseId = destWarehouseId,
+                    Status = BatchStatus.InStore,
+                    PurchaseOrderRef = sourceBatch.PurchaseOrderRef,
+                    Remarks = $"Received from indent {indent.IndentNumber}"
+                });
+            }
+
+            line.ReceivedQuantity = qty;
+        }
+
+        indent.Status = IndentStatus.Received;
+        indent.ReceivedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
-        await audit.LogAsync(nameof(Indent), id, $"Transition:{from}->{to}",
-            before: new { Status = from }, after: new { Status = to },
-            summary: $"Indent {i.IndentNumber} moved {from} -> {to}", ct: ct);
+
+        await audit.LogAsync(nameof(Indent), id, "Transition:Issued->Received",
+            after: indent.Lines.Select(l => new { l.Id, l.ReceivedQuantity }),
+            summary: $"Indent {indent.IndentNumber} received at destination", ct: ct);
         return Ok(await Reload(id, ct));
     }
+
+    private Task<Indent?> Load(Guid id, CancellationToken ct) =>
+        db.Indents.Include(x => x.Lines).FirstOrDefaultAsync(x => x.Id == id, ct);
 
     private async Task<IndentDto> Reload(Guid id, CancellationToken ct)
     {

@@ -1,5 +1,9 @@
 <h2>Indents</h2>
-<p style="color:#6b7d90; margin-bottom:1.25rem">Indent flow: Draft → Submitted → Approved → Issued → Received → Closed. Each transition is a separate API call (modelled on RMSC quarterly-PO cycle).</p>
+<p style="color:#6b7d90; margin-bottom:1rem">Indent flow with stock movement: Draft → Submitted → Approved → Issued (FEFO allocates a batch and decrements source) → Received (creates / tops-up batch at destination).</p>
+
+@if (error()) {
+  <div class="card" style="color:#b91c1c">{{ error() }}</div>
+}
 
 <div class="card">
   @if (loading()) {
@@ -15,7 +19,8 @@
           <th>Fulfilled By</th>
           <th>Status</th>
           <th>Lines</th>
-          <th>Submitted</th>
+          <th>Updated</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -26,7 +31,13 @@
             <td>{{ i.fulfilledByWarehouseName }}</td>
             <td><span class="badge {{ statusBadge(i.status) }}">{{ i.status }}</span></td>
             <td>{{ i.lines.length }}</td>
-            <td>{{ i.submittedAt }}</td>
+            <td>{{ i.receivedAt || i.issuedAt || i.approvedAt || i.submittedAt }}</td>
+            <td class="actions">
+              @if (canDo('submit', i))  { <button (click)="fire('submit', i)"  [disabled]="busyId() === i.id">Submit</button> }
+              @if (canDo('approve', i)) { <button (click)="fire('approve', i)" [disabled]="busyId() === i.id">Approve</button> }
+              @if (canDo('issue', i))   { <button (click)="fire('issue', i)"   [disabled]="busyId() === i.id">Issue (FEFO)</button> }
+              @if (canDo('receive', i)) { <button (click)="fire('receive', i)" [disabled]="busyId() === i.id">Receive</button> }
+            </td>
           </tr>
         }
       </tbody>
