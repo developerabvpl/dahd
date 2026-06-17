@@ -201,3 +201,18 @@ public record CreateRedistributionIndentRequest(
 
 public record CreateRedistributionIndentResponse(
     Guid IndentId, string IndentNumber);
+
+public record ConsumptionForecastRow(
+    Guid WarehouseId, string WarehouseCode, string WarehouseName,
+    Guid DrugId, string DrugCode, string DrugName, string UnitOfMeasure,
+    int LookbackDays, decimal LookbackConsumption,
+    decimal DailyVelocity,
+    int ForecastDays, decimal ProjectedNeed,
+    decimal CurrentStock, decimal Shortfall, decimal SafetyStock);
+
+public record DraftQuarterlyIndentRequest(
+    Guid RecipientWarehouseId, Guid SourceWarehouseId,
+    int LookbackDays, int ForecastDays, decimal SafetyMultiplier);
+
+public record DraftQuarterlyIndentResponse(
+    Guid? IndentId, string? IndentNumber, int LineCount, decimal TotalQuantity);

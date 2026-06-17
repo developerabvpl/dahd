@@ -1,0 +1,104 @@
+<h2>Consumption Forecast &amp; Quarterly Indents</h2>
+<p style="color:#6b7d90; margin-bottom:1rem">Mirrors the verified RMSC mechanic: quarterly POs based on annual demand and consumption pattern. Joins dispense events to the batch's current warehouse, computes daily velocity, projects need over the forecast window, and subtracts current in-store stock to find shortfalls.</p>
+
+<div class="card">
+  <h3 style="margin-top:0">Parameters</h3>
+  <div class="action-row">
+    <label>Lookback (days)
+      <input type="number" min="7" max="730" [ngModel]="lookbackDays()" (ngModelChange)="lookbackDays.set($event)" />
+    </label>
+    <label>Forecast (days)
+      <input type="number" min="7" max="365" [ngModel]="forecastDays()" (ngModelChange)="forecastDays.set($event)" />
+    </label>
+    <label>Safety multiplier
+      <input type="number" min="1" max="3" step="0.05" [ngModel]="safety()" (ngModelChange)="safety.set($event)" />
+    </label>
+    <label>Warehouse filter
+      <select [ngModel]="warehouseFilter()" (ngModelChange)="warehouseFilter.set($event)">
+        <option value="">All</option>
+        @for (w of warehouses(); track w.id) {
+          <option [value]="w.id">{{ w.code }} — {{ w.name }}</option>
+        }
+      </select>
+    </label>
+    <button class="primary" (click)="rerunForecast()">Refresh forecast</button>
+  </div>
+</div>
+
+@if (canDraft()) {
+  <div class="card">
+    <h3 style="margin-top:0">Auto-draft quarterly indent</h3>
+    <div class="action-row">
+      <label>Recipient warehouse
+        <select [ngModel]="recipientId()" (ngModelChange)="recipientId.set($event)">
+          <option value="" disabled>— pick recipient —</option>
+          @for (w of recipientCandidates(); track w.id) {
+            <option [value]="w.id">{{ w.code }} — {{ w.name }}</option>
+          }
+        </select>
+      </label>
+      <label>Source warehouse
+        <select [ngModel]="sourceId()" (ngModelChange)="sourceId.set($event)">
+          <option value="" disabled>— pick source —</option>
+          @for (w of sourceCandidates(); track w.id) {
+            <option [value]="w.id">{{ w.code }} — {{ w.name }}</option>
+          }
+        </select>
+      </label>
+      <button (click)="draftQuarterly()" [disabled]="busy()" class="primary">
+        {{ busy() ? 'Drafting...' : 'Draft quarterly indent' }}
+      </button>
+    </div>
+    <small style="color:#6b7d90">Uses current forecast parameters; creates a single Draft indent containing one line per drug with positive shortfall at the recipient.</small>
+  </div>
+}
+
+@if (notice()) { <div class="card" style="color:#065f46">{{ notice() }}</div> }
+@if (error())  { <div class="card" style="color:#b91c1c">{{ error() }}</div> }
+
+<div class="card">
+  <h3 style="margin-top:0; display:flex; justify-content:space-between; align-items:center">
+    Forecast
+    <small style="color:#6b7d90">{{ shortfallRows().length }} shortfall row(s) totalling {{ shortfallTotal() | number }} units</small>
+  </h3>
+  @if (loading()) {
+    <p>Computing...</p>
+  } @else if (rows().length === 0) {
+    <p>No dispense events in the lookback window — forecast is empty. Record some dispenses to populate.</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>Warehouse</th>
+          <th>Drug</th>
+          <th>Lookback Used</th>
+          <th>Velocity / day</th>
+          <th>Forecast Need</th>
+          <th>+ Safety</th>
+          <th>Current Stock</th>
+          <th>Shortfall</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of rows(); track r.warehouseId + '|' + r.drugId) {
+          <tr>
+            <td>{{ r.warehouseCode }} <br><small>{{ r.warehouseName }}</small></td>
+            <td>{{ r.drugCode }} <br><small>{{ r.drugName }}</small></td>
+            <td>{{ r.lookbackConsumption }} {{ r.unitOfMeasure }} over {{ r.lookbackDays }}d</td>
+            <td>{{ r.dailyVelocity | number:'1.0-4' }}</td>
+            <td>{{ r.projectedNeed | number }}</td>
+            <td>{{ r.safetyStock | number }}</td>
+            <td>{{ r.currentStock | number }}</td>
+            <td>
+              @if (r.shortfall > 0) {
+                <span class="badge bad">{{ r.shortfall | number }}</span>
+              } @else {
+                <span class="badge ok">OK</span>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>
