@@ -54,6 +54,109 @@ public static class DahdSeeder
         {
             await SeedOperationalDataAsync(db, ct);
         }
+
+        if (!await db.RateContracts.AnyAsync(ct))
+        {
+            await SeedRateContractsAsync(db, ct);
+        }
+    }
+
+    private static async Task SeedRateContractsAsync(DahdDbContext db, CancellationToken ct)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var drugs = await db.Drugs.ToListAsync(ct);
+
+        var medsRc = new RateContract
+        {
+            ContractNumber = $"AHD-MED-{today.Year}",
+            Title = "Veterinary Medicines / Vitamins / Hormones / Minerals — UP AHD Rate Contract",
+            Category = RateContractCategory.Medicines,
+            LeadBody = "AHD",
+            ValidFrom = today.AddMonths(-3),
+            ValidUntil = today.AddMonths(9),
+            Status = RateContractStatus.Active,
+            SourceUrl = "https://animalhusb.upsdc.gov.in/en/approved-rate-list",
+            Notes = "Imported from the published AHD Approved Rate List. Re-fetch annually."
+        };
+        var vacRc = new RateContract
+        {
+            ContractNumber = $"AHD-VAC-{today.Year}",
+            Title = "Veterinary Vaccines — ASCAD + State Share Rate Contract",
+            Category = RateContractCategory.Vaccines,
+            LeadBody = "AHD",
+            ValidFrom = today.AddMonths(-3),
+            ValidUntil = today.AddMonths(9),
+            Status = RateContractStatus.Active,
+            SourceUrl = "https://animalhusb.upsdc.gov.in/en/approved-rate-list",
+            Notes = "Covers ASCAD basket (HS, BQ, CSF, anti-rabies, Ranikhet/NCD, Gumboro, Fowl Pox)."
+        };
+        var equipRc = new RateContract
+        {
+            ContractNumber = $"AHD-EQP-{today.Year}",
+            Title = "Veterinary Equipments / Machineries & Instruments — UP AHD Rate Contract",
+            Category = RateContractCategory.Equipment,
+            LeadBody = "AHD",
+            ValidFrom = today.AddMonths(-2),
+            ValidUntil = today.AddMonths(10),
+            Status = RateContractStatus.Active,
+            SourceUrl = "https://animalhusb.upsdc.gov.in/en/approved-rate-list",
+            Notes = "AI guns, LN2 containers, autoclaves, microscopes, surgical instruments, cold-chain cabinets."
+        };
+        db.RateContracts.AddRange(medsRc, vacRc, equipRc);
+        await db.SaveChangesAsync(ct);
+
+        // Item lines for medicines RC
+        (string Code, decimal Rate, string Pack, string Vendor)[] medsLines =
+        {
+            ("OXY-50", 145m, "50ml vial",   "Cipla Vet"),
+            ("ENRO-100", 220m, "100ml vial","Pfizer Animal Health"),
+            ("IVERM", 165m, "50ml vial",    "Virbac India"),
+            ("ALBEND-1L", 320m, "1L bottle","Indian Immunologicals Ltd"),
+            ("CAL-INJ", 95m, "450ml bottle","Cipla Vet"),
+            ("BCMP-100", 105m, "100ml vial","Cipla Vet"),
+            ("OXY-20", 65m, "10IU ampoule", "Pfizer Animal Health"),
+            ("MELOX-50", 285m, "50ml vial", "Virbac India"),
+            ("XYL-30", 410m, "30ml vial",   "Pfizer Animal Health"),
+            ("POVID-1L", 175m, "1L bottle", "Cipla Vet")
+        };
+        foreach (var (code, rate, pack, vendor) in medsLines)
+        {
+            var d = drugs.FirstOrDefault(x => x.Code == code);
+            if (d is null) continue;
+            db.RateContractItems.Add(new RateContractItem
+            {
+                RateContractId = medsRc.Id, DrugId = d.Id,
+                VendorName = vendor, UnitRate = rate, PackSize = pack,
+                MinOrderQuantity = 100
+            });
+        }
+
+        (string Code, decimal Rate, string Pack, string Vendor)[] vacLines =
+        {
+            ("FMD-VAX",  10.5m, "10-dose vial", "Indian Immunologicals Ltd"),
+            ("BRU-S19",  18.0m, "10-dose vial", "Indian Immunologicals Ltd"),
+            ("HS-VAX",    8.5m, "20-dose vial", "Hester Biosciences"),
+            ("BQ-VAX",    7.8m, "20-dose vial", "Hester Biosciences"),
+            ("CSF-VAX",  12.0m, "10-dose vial", "Indian Immunologicals Ltd"),
+            ("RAB-VAX",  24.0m, "1ml vial",     "Indian Immunologicals Ltd"),
+            ("NCD-VAX",   3.2m, "100-dose vial","Hester Biosciences"),
+            ("IBD-VAX",   3.5m, "100-dose vial","Hester Biosciences"),
+            ("FPV-VAX",   4.0m, "100-dose vial","Hester Biosciences")
+        };
+        foreach (var (code, rate, pack, vendor) in vacLines)
+        {
+            var d = drugs.FirstOrDefault(x => x.Code == code);
+            if (d is null) continue;
+            db.RateContractItems.Add(new RateContractItem
+            {
+                RateContractId = vacRc.Id, DrugId = d.Id,
+                VendorName = vendor, UnitRate = rate, PackSize = pack,
+                MinOrderQuantity = 1000,
+                Remarks = "ASCAD / NADCP eligible"
+            });
+        }
+
+        await db.SaveChangesAsync(ct);
     }
 
     private static async Task SeedOperationalDataAsync(DahdDbContext db, CancellationToken ct)

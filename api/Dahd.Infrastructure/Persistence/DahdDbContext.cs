@@ -21,6 +21,8 @@ public class DahdDbContext : DbContext
     public DbSet<Vendor> Vendors => Set<Vendor>();
     public DbSet<VendorDocument> VendorDocuments => Set<VendorDocument>();
     public DbSet<ProcurementCampaign> ProcurementCampaigns => Set<ProcurementCampaign>();
+    public DbSet<RateContract> RateContracts => Set<RateContract>();
+    public DbSet<RateContractItem> RateContractItems => Set<RateContractItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -179,6 +181,29 @@ public class DahdDbContext : DbContext
             e.HasIndex(c => c.Code).IsUnique();
             e.HasIndex(c => c.WindowStart);
             e.HasOne(c => c.Drug).WithMany().HasForeignKey(c => c.DrugId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<RateContract>(e =>
+        {
+            e.Property(r => r.ContractNumber).HasMaxLength(60).IsRequired();
+            e.Property(r => r.Title).HasMaxLength(300).IsRequired();
+            e.Property(r => r.LeadBody).HasMaxLength(40);
+            e.Property(r => r.SourceUrl).HasMaxLength(500);
+            e.Property(r => r.Notes).HasMaxLength(1000);
+            e.HasIndex(r => r.ContractNumber).IsUnique();
+            e.HasIndex(r => r.Status);
+        });
+
+        modelBuilder.Entity<RateContractItem>(e =>
+        {
+            e.Property(i => i.UnitRate).HasPrecision(18, 4);
+            e.Property(i => i.VendorName).HasMaxLength(200);
+            e.Property(i => i.PackSize).HasMaxLength(80);
+            e.Property(i => i.Remarks).HasMaxLength(500);
+            e.HasOne(i => i.RateContract).WithMany(r => r.Items).HasForeignKey(i => i.RateContractId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(i => i.Drug).WithMany().HasForeignKey(i => i.DrugId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(i => i.Vendor).WithMany().HasForeignKey(i => i.VendorId).OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(i => new { i.RateContractId, i.DrugId });
         });
 
         base.OnModelCreating(modelBuilder);

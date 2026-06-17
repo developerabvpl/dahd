@@ -1,0 +1,107 @@
+<h2>Rate Contracts</h2>
+<p style="color:#6b7d90; margin-bottom:1rem">Imported from <code>animalhusb.upsdc.gov.in/en/approved-rate-list</code>: the Veterinary Medicines / Vitamins / Hormones / Minerals RC, the ASCAD Vaccines RC, and the Veterinary Equipments RC. Drives indent approval — surfaces the cheapest rate-contracted vendor per drug.</p>
+
+<div class="card" style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap">
+  <strong>Category:</strong>
+  <button (click)="categoryFilter.set(''); load()" [class.primary]="categoryFilter() === ''">All</button>
+  @for (c of categories; track c) {
+    <button (click)="categoryFilter.set(c); load()" [class.primary]="categoryFilter() === c">{{ c }}</button>
+  }
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">Cheapest rate-contracted price per drug</h3>
+  <small style="color:#6b7d90">Across Active contracts whose validity has not yet ended.</small>
+  @if (loading()) {
+    <p>Loading...</p>
+  } @else if (cheapest().length === 0) {
+    <p>No rate-contracted items found.</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>Drug</th>
+          <th>Unit Rate</th>
+          <th>Pack</th>
+          <th>Vendor</th>
+          <th>Contract</th>
+          <th>Valid Until</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of cheapest(); track r.drugId) {
+          <tr>
+            <td><strong>{{ r.drugCode }}</strong> — {{ r.drugName }}</td>
+            <td>₹{{ r.unitRate }}</td>
+            <td>{{ r.packSize }}</td>
+            <td>{{ r.vendorName }}</td>
+            <td>{{ r.contractNumber }}</td>
+            <td>{{ r.contractValidUntil }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">Contracts ({{ contracts().length }})</h3>
+  @if (loading()) {
+    <p>Loading...</p>
+  } @else if (contracts().length === 0) {
+    <p>No contracts in this category.</p>
+  } @else {
+    @for (r of contracts(); track r.id) {
+      <details class="vendor">
+        <summary>
+          <span class="title">{{ r.contractNumber }} · {{ r.title }}</span>
+          <span class="badge">{{ r.category }}</span>
+          <span class="badge {{ expiryCls(r.daysToExpiry) }}">
+            @if (r.daysToExpiry < 0) { Expired } @else { Valid · T-{{ r.daysToExpiry }}d }
+          </span>
+          <small style="margin-left:auto">{{ r.itemCount }} item(s)</small>
+        </summary>
+
+        <div class="kv">
+          <div><label>Lead body</label><span>{{ r.leadBody }}</span></div>
+          <div><label>Valid</label><span>{{ r.validFrom }} → {{ r.validUntil }}</span></div>
+          <div><label>Status</label><span>{{ r.status }}</span></div>
+          @if (r.sourceUrl) {
+            <div><label>Source</label><span><a [href]="r.sourceUrl" target="_blank" rel="noopener">{{ r.sourceUrl }}</a></span></div>
+          }
+          @if (r.notes) {
+            <div style="grid-column:1 / -1"><label>Notes</label><span>{{ r.notes }}</span></div>
+          }
+        </div>
+
+        @if (r.items.length > 0) {
+          <h4>Line items</h4>
+          <table>
+            <thead>
+              <tr>
+                <th>Drug</th>
+                <th>Vendor</th>
+                <th>Unit Rate</th>
+                <th>Pack</th>
+                <th>MOQ</th>
+                <th>Remarks</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (i of r.items; track i.id) {
+                <tr>
+                  <td><strong>{{ i.drugCode }}</strong> — {{ i.drugName }}</td>
+                  <td>{{ i.vendorName || '—' }}</td>
+                  <td>₹{{ i.unitRate }}</td>
+                  <td>{{ i.packSize }}</td>
+                  <td>{{ i.minOrderQuantity }}</td>
+                  <td><small>{{ i.remarks }}</small></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </details>
+    }
+  }
+</div>

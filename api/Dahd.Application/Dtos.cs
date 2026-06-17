@@ -238,3 +238,32 @@ public record OutbreakAlertDto(
     string DiseaseProxy, AnimalSpecies Species,
     string? District, int EventCount, int DistinctAnimals,
     DateTime FirstSeenAt, DateTime LastSeenAt, string Severity);
+
+public record RateContractItemDto(
+    Guid Id, Guid DrugId, string DrugCode, string DrugName, string UnitOfMeasure,
+    Guid? VendorId, string? VendorName,
+    decimal UnitRate, string? PackSize, int? MinOrderQuantity, string? Remarks);
+
+public record RateContractDto(
+    Guid Id, string ContractNumber, string Title,
+    RateContractCategory Category, string LeadBody,
+    DateOnly ValidFrom, DateOnly ValidUntil, RateContractStatus Status,
+    string? SourceUrl, string? Notes,
+    int ItemCount, int DaysToExpiry,
+    IReadOnlyList<RateContractItemDto> Items);
+
+public record CreateRateContractRequest(
+    string ContractNumber, string Title,
+    RateContractCategory Category, string LeadBody,
+    DateOnly ValidFrom, DateOnly ValidUntil,
+    string? SourceUrl, string? Notes);
+
+public record AddRateContractItemRequest(
+    Guid DrugId, Guid? VendorId, string? VendorName,
+    decimal UnitRate, string? PackSize, int? MinOrderQuantity, string? Remarks);
+
+public record CheapestRateRow(
+    Guid DrugId, string DrugCode, string DrugName,
+    Guid RateContractId, string ContractNumber, string ContractTitle,
+    Guid? VendorId, string? VendorName,
+    decimal UnitRate, string? PackSize, DateOnly ContractValidUntil);
