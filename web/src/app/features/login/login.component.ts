@@ -1,13 +1,13 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 
 @Component({
   selector: 'app-login',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -29,7 +29,8 @@ export class LoginComponent implements OnDestroy {
     { user: 'cvo',      pass: 'cvo123',      role: 'CVO' },
     { user: 'wh',       pass: 'wh123',       role: 'Warehouse In-Charge' },
     { user: 'vet',      pass: 'vet123',      role: 'Facility Vet' },
-    { user: 'mvuvet',   pass: 'mvu123',      role: 'MVU Vet' }
+    { user: 'mvuvet',   pass: 'mvu123',      role: 'MVU Vet' },
+    { user: 'vendor1',  pass: 'vendor123',   role: 'Vendor' }
   ];
 
   fill(user: string, pass: string): void {

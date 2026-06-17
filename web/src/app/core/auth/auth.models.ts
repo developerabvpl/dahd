@@ -1,6 +1,6 @@
 export type AppRole =
   | 'Admin' | 'Director' | 'Cvo'
-  | 'WarehouseIncharge' | 'FacilityVet' | 'MvuVet' | 'Readonly';
+  | 'WarehouseIncharge' | 'FacilityVet' | 'MvuVet' | 'Readonly' | 'Vendor';
 
 export interface AuthUser {
   id: string;

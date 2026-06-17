@@ -1,0 +1,89 @@
+<h2>Vendor Portal</h2>
+<p style="color:#6b7d90; margin-bottom:1rem">Manage your empanelment application — upload supporting documents, then submit for AHD review.</p>
+
+@if (loading()) {
+  <div class="card">Loading...</div>
+} @else {
+  @let v = vendor();
+  @if (v) {
+  <div class="card">
+    <h3 style="margin-top:0">{{ v.legalName }} <span class="badge" [class.ok]="v.status==='Approved'" [class.warn]="v.status==='Submitted' || v.status==='UnderReview'" [class.bad]="v.status==='Rejected' || v.status==='Blacklisted'">{{ v.status }}</span></h3>
+    <small style="color:#6b7d90">{{ v.tradeName }}</small>
+    <div class="kv">
+      <div><label>Contact</label><span>{{ v.contactPerson }} · {{ v.contactEmail }} · {{ v.contactPhone }}</span></div>
+      <div><label>City / State</label><span>{{ v.city }}, {{ v.state }} {{ v.pincode }}</span></div>
+      <div><label>GSTIN / PAN</label><span>{{ v.gstin || '—' }} / {{ v.pan || '—' }}</span></div>
+      <div><label>Categories</label><span>{{ categoryLabels(v.categories) }}</span></div>
+      <div><label>Manufacturer / MSME</label><span>{{ v.isManufacturer ? 'Yes' : 'No' }} / {{ v.isMsme ? 'Yes' : 'No' }}</span></div>
+      @if (v.empanelmentValidUntil) {
+        <div><label>Empanelment Valid Until</label><span><strong>{{ v.empanelmentValidUntil }}</strong></span></div>
+      }
+      @if (v.reviewRemarks) {
+        <div><label>Review Remarks</label><span>{{ v.reviewRemarks }}</span></div>
+      }
+      @if (v.blacklistReason) {
+        <div><label>Blacklist Reason</label><span>{{ v.blacklistReason }}</span></div>
+      }
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Documents ({{ v.documents.length }})</h3>
+    @if (v.documents.length === 0) {
+      <p>No documents uploaded yet.</p>
+    } @else {
+      <table>
+        <thead><tr><th>Type</th><th>File</th><th>Cert No.</th><th>Issuing Authority</th><th>Issued</th><th>Expires</th><th>Uploaded</th></tr></thead>
+        <tbody>
+          @for (d of v.documents; track d.id) {
+            <tr>
+              <td><span class="badge">{{ d.documentType }}</span></td>
+              <td>{{ d.fileName }}</td>
+              <td>{{ d.certificateNumber }}</td>
+              <td>{{ d.issuingAuthority }}</td>
+              <td>{{ d.issuedDate }}</td>
+              <td>{{ d.expiryDate }}</td>
+              <td><small>{{ d.uploadedAt }}</small></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+
+    @if (v.status === 'Draft') {
+      <h4>Add a document</h4>
+      <form (ngSubmit)="uploadDoc()" class="grid">
+        <label>
+          <span>Document Type</span>
+          <select name="dt" [(ngModel)]="draftDoc.documentType">
+            @for (t of docTypes; track t) { <option [value]="t">{{ t }}</option> }
+          </select>
+        </label>
+        <label><span>File Name</span><input name="fn" [(ngModel)]="draftDoc.fileName" required /></label>
+        <label><span>Certificate No.</span><input name="cn" [(ngModel)]="draftDoc.certificateNumber" /></label>
+        <label><span>Issuing Authority</span><input name="ia" [(ngModel)]="draftDoc.issuingAuthority" /></label>
+        <label><span>Issued Date</span><input type="date" name="id" [(ngModel)]="draftDoc.issuedDate" /></label>
+        <label><span>Expiry Date</span><input type="date" name="ed" [(ngModel)]="draftDoc.expiryDate" /></label>
+        <label class="wide"><span>Notes</span><input name="nt" [(ngModel)]="draftDoc.notes" /></label>
+        <div class="actions">
+          <button type="submit" class="primary" [disabled]="busy()">{{ busy() ? 'Saving...' : 'Add document' }}</button>
+        </div>
+      </form>
+    }
+  </div>
+
+  @if (notice()) { <div class="card" style="color:#065f46">{{ notice() }}</div> }
+  @if (error())  { <div class="card" style="color:#b91c1c">{{ error() }}</div> }
+
+  @if (v.status === 'Draft') {
+    <div class="card">
+      <button class="primary" (click)="submit()" [disabled]="busy() || v.documents.length === 0">
+        Submit for AHD review
+      </button>
+      @if (v.documents.length === 0) {
+        <small style="margin-left:0.6rem; color:#6b7d90">Upload at least one document first.</small>
+      }
+    </div>
+  }
+  }
+}

@@ -1,0 +1,57 @@
+@use '../login/login.component' as *;
+
+.login-card.wide { max-width: 760px; }
+
+fieldset {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.7rem 0.9rem;
+  margin: 0;
+  legend { font-size: 0.78rem; color: #4a5b6c; padding: 0 0.4rem; }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.35rem;
+  }
+  .chip {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: #f4f6fa;
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.82rem;
+    cursor: pointer;
+
+    input { margin: 0; }
+  }
+}
+
+label.check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: #4a5b6c;
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.5rem;
+
+  .muted { color: #6b7d90; font-size: 0.85rem; text-decoration: none; }
+  .muted:hover { color: #2c66c4; }
+}
+
+.success {
+  background: #ecfdf5;
+  border: 1px solid #6ee7b7;
+  border-radius: 6px;
+  padding: 1rem;
+  color: #065f46;
+}

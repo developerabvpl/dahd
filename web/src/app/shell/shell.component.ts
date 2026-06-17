@@ -22,6 +22,12 @@ export class ShellComponent {
   readonly pending = this.queue.pendingCount;
   readonly draining = this.queue.draining;
 
+  readonly isVendor = () => this.auth.hasRole('Vendor');
+  readonly isAhdAdmin = () => this.auth.hasRole('Admin', 'Director');
+  readonly isOperator = () => this.auth.hasRole(
+    'Admin', 'Director', 'Cvo', 'WarehouseIncharge', 'FacilityVet', 'MvuVet', 'Readonly'
+  );
+
   logout(): void {
     this.auth.logout();
   }

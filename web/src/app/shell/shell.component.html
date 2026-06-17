@@ -16,16 +16,24 @@
     </div>
 
     <nav>
-      <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
-      <a routerLink="/drugs" routerLinkActive="active">Drugs &amp; Vaccines</a>
-      <a routerLink="/warehouses" routerLinkActive="active">Warehouses</a>
-      <a routerLink="/facilities" routerLinkActive="active">Facilities &amp; MVU</a>
-      <a routerLink="/batches" routerLinkActive="active">Batches</a>
-      <a routerLink="/stock" routerLinkActive="active">Stock</a>
-      <a routerLink="/indents" routerLinkActive="active">Indents</a>
-      <a routerLink="/coldchain" routerLinkActive="active">Cold Chain</a>
-      <a routerLink="/dispense" routerLinkActive="active">Dispense</a>
-      <a routerLink="/audit" routerLinkActive="active">Audit Log</a>
+      @if (isOperator()) {
+        <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+        <a routerLink="/drugs" routerLinkActive="active">Drugs &amp; Vaccines</a>
+        <a routerLink="/warehouses" routerLinkActive="active">Warehouses</a>
+        <a routerLink="/facilities" routerLinkActive="active">Facilities &amp; MVU</a>
+        <a routerLink="/batches" routerLinkActive="active">Batches</a>
+        <a routerLink="/stock" routerLinkActive="active">Stock</a>
+        <a routerLink="/indents" routerLinkActive="active">Indents</a>
+        <a routerLink="/coldchain" routerLinkActive="active">Cold Chain</a>
+        <a routerLink="/dispense" routerLinkActive="active">Dispense</a>
+        @if (isAhdAdmin()) {
+          <a routerLink="/vendors" routerLinkActive="active">Vendor Empanelment</a>
+        }
+        <a routerLink="/audit" routerLinkActive="active">Audit Log</a>
+      }
+      @if (isVendor()) {
+        <a routerLink="/vendor" routerLinkActive="active">My Empanelment</a>
+      }
     </nav>
     <footer>
       @if (user(); as u) {
@@ -35,7 +43,7 @@
         </div>
         <button class="logout" (click)="logout()">Sign out</button>
       }
-      <small>v0.3 &middot; Phase 2 (offline-first)</small>
+      <small>v0.4 &middot; Phase 3.4</small>
     </footer>
   </aside>
   <main class="content">

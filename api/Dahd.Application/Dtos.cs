@@ -119,3 +119,42 @@ public record AuditEventDto(
     Guid? ActorUserId, string? ActorUsername, string? ActorRole,
     string? IpAddress, string? CorrelationId, string? Summary,
     string? BeforeJson, string? AfterJson);
+
+public record VendorDocumentDto(
+    Guid Id, VendorDocumentType DocumentType, string FileName, string? StorageRef,
+    string? IssuingAuthority, string? CertificateNumber,
+    DateOnly? IssuedDate, DateOnly? ExpiryDate, string? Notes,
+    DateTime UploadedAt, string? UploadedBy);
+
+public record VendorDto(
+    Guid Id, Guid UserId, string Username,
+    string LegalName, string? TradeName,
+    string ContactPerson, string ContactEmail, string ContactPhone,
+    string? City, string? State, string? Pincode,
+    string? Gstin, string? Pan, string? UdyamRegNumber,
+    bool IsManufacturer, bool IsMsme, VendorCategory Categories,
+    VendorStatus Status,
+    DateTime? SubmittedAt, DateTime? UnderReviewAt,
+    DateTime? ApprovedAt, DateTime? RejectedAt, DateTime? BlacklistedAt,
+    string? ReviewedBy, string? ReviewRemarks,
+    DateTime? ScheduledInspectionAt, string? InspectionRemarks,
+    string? BlacklistReason, DateOnly? EmpanelmentValidUntil,
+    IReadOnlyList<VendorDocumentDto> Documents);
+
+public record VendorRegistrationRequest(
+    string Username, string Password,
+    string LegalName, string? TradeName,
+    string ContactPerson, string ContactEmail, string ContactPhone,
+    string? Address, string? City, string? State, string? Pincode,
+    string? Gstin, string? Pan, string? UdyamRegNumber,
+    bool IsManufacturer, bool IsMsme,
+    VendorCategory Categories);
+
+public record UploadVendorDocumentRequest(
+    VendorDocumentType DocumentType, string FileName, string? StorageRef,
+    string? IssuingAuthority, string? CertificateNumber,
+    DateOnly? IssuedDate, DateOnly? ExpiryDate, string? Notes);
+
+public record VendorReviewActionRequest(
+    string? Remarks, DateTime? ScheduledInspectionAt,
+    DateOnly? EmpanelmentValidUntil, string? BlacklistReason);

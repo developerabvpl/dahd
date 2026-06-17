@@ -1,0 +1,59 @@
+<div class="login-wrap">
+  <div class="login-card wide">
+    <h1>Vendor Empanelment</h1>
+    <p class="sub">Register to apply for empanelment with the UP Department of Animal Husbandry.</p>
+
+    @if (success()) {
+      <div class="success">
+        <h3>Registered.</h3>
+        <p>You can now <a routerLink="/login">sign in</a> with your username and password to upload documents and submit your application.</p>
+      </div>
+    } @else {
+      <form (ngSubmit)="submit()" #f="ngForm" class="grid">
+        <label class="wide"><span>Legal Name *</span><input name="legalName" [(ngModel)]="draft.legalName" required /></label>
+        <label><span>Trade Name</span><input name="tradeName" [(ngModel)]="draft.tradeName" /></label>
+        <label><span>Contact Person *</span><input name="contactPerson" [(ngModel)]="draft.contactPerson" required /></label>
+
+        <label><span>Contact Email *</span><input type="email" name="contactEmail" [(ngModel)]="draft.contactEmail" required /></label>
+        <label><span>Contact Phone *</span><input type="tel" name="contactPhone" [(ngModel)]="draft.contactPhone" required /></label>
+
+        <label><span>City</span><input name="city" [(ngModel)]="draft.city" /></label>
+        <label><span>State</span><input name="state" [(ngModel)]="draft.state" /></label>
+        <label><span>Pincode</span><input name="pincode" [(ngModel)]="draft.pincode" /></label>
+
+        <label><span>GSTIN</span><input name="gstin" [(ngModel)]="draft.gstin" /></label>
+        <label><span>PAN</span><input name="pan" [(ngModel)]="draft.pan" /></label>
+        <label><span>Udyam Reg. No</span><input name="udyam" [(ngModel)]="draft.udyamRegNumber" /></label>
+
+        <label class="check"><input type="checkbox" name="isManufacturer" [(ngModel)]="draft.isManufacturer" /> We are the manufacturer (OEM)</label>
+        <label class="check"><input type="checkbox" name="isMsme" [(ngModel)]="draft.isMsme" /> MSME / Udyam registered</label>
+
+        <fieldset class="wide">
+          <legend>Categories of supply *</legend>
+          <div class="chips">
+            @for (c of categoryOptions; track c.value) {
+              <label class="chip">
+                <input type="checkbox" [checked]="selectedCategories().has(c.value)" (change)="toggleCategory(c.value)" />
+                <span>{{ c.label }}</span>
+              </label>
+            }
+          </div>
+        </fieldset>
+
+        <label><span>Login Username *</span><input name="username" [(ngModel)]="draft.username" required minlength="3" /></label>
+        <label><span>Login Password *</span><input type="password" name="password" [(ngModel)]="draft.password" required minlength="8" /></label>
+
+        @if (error()) {
+          <div class="err wide">{{ error() }}</div>
+        }
+
+        <div class="actions wide">
+          <a routerLink="/login" class="muted">Already registered? Sign in</a>
+          <button type="submit" class="primary" [disabled]="busy() || f.invalid">
+            {{ busy() ? 'Registering...' : 'Register' }}
+          </button>
+        </div>
+      </form>
+    }
+  </div>
+</div>

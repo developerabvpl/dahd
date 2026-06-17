@@ -20,6 +20,10 @@
       <button type="submit" class="primary" [disabled]="busy() || f.invalid">
         {{ busy() ? 'Signing in...' : 'Sign in' }}
       </button>
+
+      <p style="font-size:0.82rem; color:#6b7d90; margin: 0.6rem 0 0">
+        New vendor? <a routerLink="/vendor-register">Apply for empanelment</a>
+      </p>
     </form>
 
     <details class="demo">

@@ -46,7 +46,8 @@ public static class DahdSeeder
         new() { Username = "cvo",       DisplayName = "CVO Lucknow (Demo)",    Role = AppRole.Cvo,               PasswordHash = hasher.Hash("cvo123") },
         new() { Username = "wh",        DisplayName = "Warehouse In-Charge",   Role = AppRole.WarehouseIncharge, PasswordHash = hasher.Hash("wh123") },
         new() { Username = "vet",       DisplayName = "Facility Veterinarian", Role = AppRole.FacilityVet,       PasswordHash = hasher.Hash("vet123") },
-        new() { Username = "mvuvet",    DisplayName = "MVU Veterinarian",      Role = AppRole.MvuVet,            PasswordHash = hasher.Hash("mvu123") }
+        new() { Username = "mvuvet",    DisplayName = "MVU Veterinarian",      Role = AppRole.MvuVet,            PasswordHash = hasher.Hash("mvu123") },
+        new() { Username = "vendor1",   DisplayName = "Demo Vendor (Pre-empanelled)", Role = AppRole.Vendor,     PasswordHash = hasher.Hash("vendor123") }
     ];
 
     private static List<Drug> BuildDrugs() =>

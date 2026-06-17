@@ -1,0 +1,80 @@
+<h2>Vendor Empanelment</h2>
+<p style="color:#6b7d90; margin-bottom:1rem">Review vendor applications, schedule inspections, approve / reject / blacklist. Every action is audited.</p>
+
+<div class="card" style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap">
+  <strong style="margin-right:0.5rem">Filter:</strong>
+  <button (click)="setFilter('')" [class.primary]="statusFilter() === ''">All</button>
+  @for (s of statuses; track s) {
+    <button (click)="setFilter(s)" [class.primary]="statusFilter() === s">{{ s }}</button>
+  }
+</div>
+
+@if (notice()) { <div class="card" style="color:#065f46">{{ notice() }}</div> }
+@if (error())  { <div class="card" style="color:#b91c1c">{{ error() }}</div> }
+
+<div class="card">
+  @if (loading()) {
+    <p>Loading...</p>
+  } @else if (vendors().length === 0) {
+    <p>No vendors match the filter.</p>
+  } @else {
+    @for (v of vendors(); track v.id) {
+      <details class="vendor">
+        <summary>
+          <span class="title">{{ v.legalName }}</span>
+          <span class="badge {{ statusBadge(v.status) }}">{{ v.status }}</span>
+          <small>{{ categoryLabels(v.categories) }}</small>
+          <small style="margin-left:auto">{{ v.documents.length }} doc(s)</small>
+        </summary>
+
+        <div class="kv">
+          <div><label>Trade Name</label><span>{{ v.tradeName || '—' }}</span></div>
+          <div><label>Contact</label><span>{{ v.contactPerson }} · {{ v.contactEmail }} · {{ v.contactPhone }}</span></div>
+          <div><label>Location</label><span>{{ v.city }}, {{ v.state }} {{ v.pincode }}</span></div>
+          <div><label>GSTIN / PAN / Udyam</label><span>{{ v.gstin || '—' }} / {{ v.pan || '—' }} / {{ v.udyamRegNumber || '—' }}</span></div>
+          <div><label>Manufacturer / MSME</label><span>{{ v.isManufacturer ? 'Yes' : 'No' }} / {{ v.isMsme ? 'Yes' : 'No' }}</span></div>
+          <div><label>Submitted</label><span>{{ v.submittedAt || '—' }}</span></div>
+          @if (v.scheduledInspectionAt) { <div><label>Inspection</label><span>{{ v.scheduledInspectionAt }}</span></div> }
+          @if (v.empanelmentValidUntil) { <div><label>Valid Until</label><span>{{ v.empanelmentValidUntil }}</span></div> }
+          @if (v.reviewRemarks) { <div><label>Last Remarks</label><span>{{ v.reviewRemarks }}</span></div> }
+          @if (v.blacklistReason) { <div><label>Blacklist Reason</label><span>{{ v.blacklistReason }}</span></div> }
+        </div>
+
+        @if (v.documents.length > 0) {
+          <h4>Documents</h4>
+          <table>
+            <thead><tr><th>Type</th><th>File</th><th>Cert No.</th><th>Authority</th><th>Issued</th><th>Expires</th></tr></thead>
+            <tbody>
+              @for (d of v.documents; track d.id) {
+                <tr>
+                  <td><span class="badge">{{ d.documentType }}</span></td>
+                  <td>{{ d.fileName }}</td>
+                  <td>{{ d.certificateNumber }}</td>
+                  <td>{{ d.issuingAuthority }}</td>
+                  <td>{{ d.issuedDate }}</td>
+                  <td>{{ d.expiryDate }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+
+        <h4>Action</h4>
+        <div class="action-row">
+          <input type="text" placeholder="Remarks / reason" [ngModel]="remarks()[v.id] || ''" (ngModelChange)="setRemarks(v.id, $event)" name="rem-{{ v.id }}" />
+          @if (v.status === 'Submitted') {
+            <input type="datetime-local" [ngModel]="inspectionDate()[v.id] || ''" (ngModelChange)="setInspection(v.id, $event)" name="insp-{{ v.id }}" />
+            <button (click)="startReview(v)" [disabled]="busyId() === v.id">Start review</button>
+          }
+          @if (v.status === 'Submitted' || v.status === 'UnderReview') {
+            <button (click)="approve(v)" [disabled]="busyId() === v.id">Approve</button>
+            <button (click)="reject(v)"  [disabled]="busyId() === v.id">Reject</button>
+          }
+          @if (v.status !== 'Blacklisted') {
+            <button (click)="blacklist(v)" [disabled]="busyId() === v.id">Blacklist</button>
+          }
+        </div>
+      </details>
+    }
+  }
+</div>

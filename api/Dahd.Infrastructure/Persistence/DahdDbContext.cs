@@ -18,6 +18,8 @@ public class DahdDbContext : DbContext
     public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
+    public DbSet<Vendor> Vendors => Set<Vendor>();
+    public DbSet<VendorDocument> VendorDocuments => Set<VendorDocument>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -130,6 +132,40 @@ public class DahdDbContext : DbContext
             e.Property(a => a.Summary).HasMaxLength(500);
             e.HasIndex(a => a.OccurredAt);
             e.HasIndex(a => new { a.EntityType, a.EntityId });
+        });
+
+        modelBuilder.Entity<Vendor>(e =>
+        {
+            e.Property(v => v.LegalName).HasMaxLength(200).IsRequired();
+            e.Property(v => v.TradeName).HasMaxLength(200);
+            e.Property(v => v.ContactPerson).HasMaxLength(200).IsRequired();
+            e.Property(v => v.ContactEmail).HasMaxLength(200).IsRequired();
+            e.Property(v => v.ContactPhone).HasMaxLength(40).IsRequired();
+            e.Property(v => v.City).HasMaxLength(120);
+            e.Property(v => v.State).HasMaxLength(120);
+            e.Property(v => v.Pincode).HasMaxLength(16);
+            e.Property(v => v.Gstin).HasMaxLength(40);
+            e.Property(v => v.Pan).HasMaxLength(20);
+            e.Property(v => v.UdyamRegNumber).HasMaxLength(40);
+            e.Property(v => v.ReviewedBy).HasMaxLength(80);
+            e.Property(v => v.ReviewRemarks).HasMaxLength(1000);
+            e.Property(v => v.InspectionRemarks).HasMaxLength(1000);
+            e.Property(v => v.BlacklistReason).HasMaxLength(1000);
+            e.HasIndex(v => v.UserId).IsUnique();
+            e.HasIndex(v => v.Status);
+            e.HasOne(v => v.User).WithMany().HasForeignKey(v => v.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<VendorDocument>(e =>
+        {
+            e.Property(d => d.FileName).HasMaxLength(300).IsRequired();
+            e.Property(d => d.StorageRef).HasMaxLength(500);
+            e.Property(d => d.IssuingAuthority).HasMaxLength(200);
+            e.Property(d => d.CertificateNumber).HasMaxLength(120);
+            e.Property(d => d.Notes).HasMaxLength(500);
+            e.Property(d => d.UploadedBy).HasMaxLength(80);
+            e.HasOne(d => d.Vendor).WithMany(v => v.Documents).HasForeignKey(d => d.VendorId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(d => new { d.VendorId, d.DocumentType });
         });
 
         base.OnModelCreating(modelBuilder);
