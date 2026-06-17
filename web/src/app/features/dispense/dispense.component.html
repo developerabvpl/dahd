@@ -1,11 +1,88 @@
 <h2>Dispense Events</h2>
-<p style="color:#6b7d90; margin-bottom:1.25rem">Animal-level dispensing log from hospitals, dispensaries, and MVUs. Ear-tag linkage targets INAPH-style traceability.</p>
+<p style="color:#6b7d90; margin-bottom:1rem">Animal-level dispensing from hospitals, dispensaries, and the 520 MVU fleet. Form below is <strong>offline-first</strong>: if the API is unreachable, the event is queued in IndexedDB and drained when connectivity returns.</p>
+
+@if (canDispense()) {
+  <div class="card">
+    <h3 style="margin-top:0">Record a dispense</h3>
+    <form (ngSubmit)="submit()" #f="ngForm" class="grid">
+      <label>
+        <span>Batch</span>
+        <select name="batchId" [(ngModel)]="draft.batchId" required>
+          <option value="" disabled>— select batch —</option>
+          @for (b of batches(); track b.id) {
+            <option [value]="b.id">{{ b.drugName }} · {{ b.batchNumber }} · qty {{ b.quantity }} · exp {{ b.expiryDate }} ({{ b.warehouseName }})</option>
+          }
+        </select>
+      </label>
+
+      <label>
+        <span>Facility / MVU</span>
+        <select name="facilityId" [(ngModel)]="draft.facilityId" required>
+          <option value="" disabled>— select facility —</option>
+          @for (f of facilities(); track f.id) {
+            <option [value]="f.id">{{ f.code }} — {{ f.name }} ({{ f.type }})</option>
+          }
+        </select>
+      </label>
+
+      <label>
+        <span>Quantity</span>
+        <input type="number" name="quantity" min="0.01" step="0.01" [(ngModel)]="draft.quantity" required />
+      </label>
+
+      <label>
+        <span>Animal Species</span>
+        <select name="animalSpecies" [(ngModel)]="draft.animalSpecies" required>
+          @for (s of speciesOptions; track s) { <option [value]="s">{{ s }}</option> }
+        </select>
+      </label>
+
+      <label>
+        <span>Animal Ear-Tag (INAPH ID)</span>
+        <input type="text" name="animalEarTag" [(ngModel)]="draft.animalEarTag" placeholder="e.g. UP-LKO-000123" />
+      </label>
+
+      <label>
+        <span>Owner Name</span>
+        <input type="text" name="ownerName" [(ngModel)]="draft.ownerName" />
+      </label>
+
+      <label>
+        <span>Owner Mobile</span>
+        <input type="tel" name="ownerMobile" [(ngModel)]="draft.ownerMobile" pattern="[0-9+\\- ]{7,15}" />
+      </label>
+
+      <label>
+        <span>Vet Name</span>
+        <input type="text" name="vetName" [(ngModel)]="draft.vetName" />
+      </label>
+
+      <label class="wide">
+        <span>Diagnosis</span>
+        <input type="text" name="diagnosis" [(ngModel)]="draft.diagnosis" />
+      </label>
+
+      <div class="actions">
+        @if (notice()) { <span class="badge ok">{{ notice() }}</span> }
+        @if (error())  { <span class="badge bad">{{ error() }}</span> }
+        <button type="submit" class="primary" [disabled]="saving() || f.invalid">
+          {{ saving() ? 'Saving...' : online() ? 'Dispense' : 'Save offline' }}
+        </button>
+      </div>
+    </form>
+  </div>
+} @else {
+  <div class="card">
+    <small>Sign in as a Facility Vet, MVU Vet, or Admin to record dispense events.</small>
+  </div>
+}
 
 <div class="card">
+  <h3 style="margin-top:0">Recent dispense events</h3>
   @if (loading()) {
     <p>Loading...</p>
   } @else if (events().length === 0) {
-    <p>No dispense events yet. POST /api/dispense in Swagger to add one.</p>
+    <p>No dispense events in the last 30 days.</p>
   } @else {
     <table>
       <thead>

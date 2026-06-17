@@ -19,6 +19,38 @@
     p { margin: 0.25rem 0 0; font-size: 0.8rem; opacity: 0.7; }
   }
 
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.7rem 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      &.online  { background: #4ade80; box-shadow: 0 0 6px rgba(74,222,128,0.6); }
+      &.offline { background: #f97316; box-shadow: 0 0 6px rgba(249,115,22,0.6); }
+    }
+
+    .label { font-size: 0.78rem; opacity: 0.85; }
+
+    .pending {
+      margin-left: auto;
+      background: rgba(255, 200, 100, 0.15);
+      color: #fde68a;
+      border: 1px solid rgba(255, 200, 100, 0.3);
+      border-radius: 999px;
+      padding: 0.15rem 0.55rem;
+      font-size: 0.72rem;
+      cursor: pointer;
+
+      &:disabled { opacity: 0.6; cursor: not-allowed; }
+    }
+  }
+
   nav {
     flex: 1;
     margin-top: 1rem;

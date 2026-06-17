@@ -4,6 +4,17 @@
       <h1>DAHD</h1>
       <p>UP Veterinary Pharmacy MIS</p>
     </div>
+
+    <div class="status">
+      <span class="dot" [class.online]="online()" [class.offline]="!online()"></span>
+      <span class="label">{{ online() ? 'Online' : 'Offline' }}</span>
+      @if (pending() > 0) {
+        <button type="button" class="pending" (click)="drainNow()" [disabled]="!online() || draining()">
+          {{ draining() ? 'Syncing...' : pending() + ' queued' }}
+        </button>
+      }
+    </div>
+
     <nav>
       <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
       <a routerLink="/drugs" routerLinkActive="active">Drugs &amp; Vaccines</a>
@@ -24,7 +35,7 @@
         </div>
         <button class="logout" (click)="logout()">Sign out</button>
       }
-      <small>v0.2 &middot; Phase 2</small>
+      <small>v0.3 &middot; Phase 2 (offline-first)</small>
     </footer>
   </aside>
   <main class="content">
