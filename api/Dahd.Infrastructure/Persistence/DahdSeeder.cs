@@ -49,6 +49,170 @@ public static class DahdSeeder
                 await db.SaveChangesAsync(ct);
             }
         }
+
+        if (!await db.Batches.AnyAsync(ct))
+        {
+            await SeedOperationalDataAsync(db, ct);
+        }
+    }
+
+    private static async Task SeedOperationalDataAsync(DahdDbContext db, CancellationToken ct)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var now = DateTime.UtcNow;
+
+        var central = await db.Warehouses.FirstAsync(w => w.Code == "WH-CMS", ct);
+        var divisions = await db.Warehouses.Where(w => w.Type == WarehouseType.Divisional).ToListAsync(ct);
+        var facilities = await db.Facilities.ToListAsync(ct);
+        var drugs = await db.Drugs.ToListAsync(ct);
+
+        // 1) Stock batches at the central + each divisional warehouse for the main vaccines + 2 antibiotics
+        var seedDrugs = drugs.Where(d =>
+            d.Code is "FMD-VAX" or "BRU-S19" or "HS-VAX" or "RAB-VAX" or "OXY-50" or "IVERM" or "CAL-INJ" or "BCMP-100").ToList();
+
+        var batchSeed = new List<Batch>();
+        var rngLike = 0;
+        foreach (var drug in seedDrugs)
+        {
+            // Central warehouse: large batch with comfortable expiry
+            batchSeed.Add(new Batch
+            {
+                DrugId = drug.Id,
+                BatchNumber = $"{drug.Code}-CMS-{today:yyyyMM}",
+                ManufactureDate = today.AddMonths(-6),
+                ExpiryDate = today.AddMonths(18),
+                Manufacturer = drug.IsVaccine ? "Indian Immunologicals Ltd" : "Cipla Vet",
+                Quantity = drug.IsVaccine ? 50_000m : 2_000m,
+                UnitCost = drug.IsVaccine ? 12m : 145m,
+                CurrentWarehouseId = central.Id,
+                Status = BatchStatus.InStore,
+                PurchaseOrderRef = "PO-DEMO-2026-01"
+            });
+
+            // Divisional warehouses: smaller batches; throw in some near-expiry to power Redistribution suggestions
+            for (int i = 0; i < divisions.Count; i++)
+            {
+                var div = divisions[i];
+                var isNearExpiry = (rngLike + i) % 3 == 0 && drug.IsVaccine;
+                batchSeed.Add(new Batch
+                {
+                    DrugId = drug.Id,
+                    BatchNumber = $"{drug.Code}-{div.Code.Replace("WH-DIV-", string.Empty)}-{today:yyyyMM}",
+                    ManufactureDate = today.AddMonths(-8),
+                    ExpiryDate = isNearExpiry ? today.AddDays(25 + (i * 7)) : today.AddMonths(12),
+                    Manufacturer = drug.IsVaccine ? "Indian Immunologicals Ltd" : "Cipla Vet",
+                    Quantity = drug.IsVaccine ? 4_000m + (i * 500m) : 250m,
+                    UnitCost = drug.IsVaccine ? 12m : 145m,
+                    CurrentWarehouseId = div.Id,
+                    Status = BatchStatus.InStore,
+                    PurchaseOrderRef = "PO-DEMO-2026-01"
+                });
+            }
+            rngLike++;
+        }
+        db.Batches.AddRange(batchSeed);
+        await db.SaveChangesAsync(ct);
+
+        // 2) Dispense events over the last 30 days so consumption + dashboards have data
+        var mvuOrHospital = facilities
+            .Where(f => f.Type is FacilityType.MobileVeterinaryUnit
+                          or FacilityType.VeterinaryHospital
+                          or FacilityType.RuralDispensary)
+            .ToList();
+
+        if (mvuOrHospital.Count > 0)
+        {
+            var dispensableBatches = batchSeed.Where(b => !drugs.First(d => d.Id == b.DrugId).IsVaccine
+                                                     || b.CurrentWarehouseId != central.Id)
+                                              .ToList();
+
+            var dispenses = new List<DispenseEvent>();
+            var batchCursor = 0;
+            for (int day = 30; day >= 1; day--)
+            {
+                for (int e = 0; e < 4; e++)
+                {
+                    var batch = dispensableBatches[(batchCursor++) % dispensableBatches.Count];
+                    var facility = mvuOrHospital[(batchCursor + day) % mvuOrHospital.Count];
+                    var qty = 1 + ((batchCursor + day) % 5);
+                    if (batch.Quantity < qty) continue;
+                    batch.Quantity -= qty;
+                    dispenses.Add(new DispenseEvent
+                    {
+                        BatchId = batch.Id,
+                        Quantity = qty,
+                        FacilityId = facility.Id,
+                        AnimalEarTag = $"UP-{(day * 100 + e):00000}",
+                        AnimalSpecies = (AnimalSpecies)((batchCursor % 6) + 1),
+                        OwnerName = $"Farmer {day}-{e}",
+                        OwnerMobile = $"9{(700_000_000 + batchCursor):D9}",
+                        Diagnosis = batchCursor % 3 == 0 ? "Routine vaccination"
+                                  : batchCursor % 3 == 1 ? "Tick infestation"
+                                                         : "Lameness",
+                        VetName = facility.Type == FacilityType.MobileVeterinaryUnit ? "MVU Vet" : "Facility Vet",
+                        DispensedAt = now.AddDays(-day).AddHours((e * 3) % 12)
+                    });
+                }
+            }
+            db.DispenseEvents.AddRange(dispenses);
+        }
+
+        // 3) Cold-chain readings: 7 days × 4 readings/day per cold-chain warehouse, with a few breaches
+        var coldDevices = new[]
+        {
+            (Warehouse: central, DeviceId: "ILR-01", DeviceName: "Walk-in ILR (Central)"),
+        }.Concat(divisions.Select((d, i) => (Warehouse: d, DeviceId: $"ILR-D{i + 1:00}", DeviceName: $"ILR {d.Code}")))
+         .ToList();
+
+        var ccLogs = new List<ColdChainLog>();
+        for (int day = 7; day >= 1; day--)
+        {
+            for (int slot = 0; slot < 4; slot++)
+            {
+                var hour = slot * 6;
+                foreach (var (wh, devId, devName) in coldDevices)
+                {
+                    var baseT = 4.5m + ((slot - 1) * 0.5m);
+                    var isBreach = (day == 3 && slot == 0 && wh.Code == "WH-DIV-GKP")
+                                || (day == 1 && slot == 3 && wh.Code == "WH-DIV-MRT");
+                    var t = isBreach ? 11.2m : baseT;
+                    ccLogs.Add(new ColdChainLog
+                    {
+                        WarehouseId = wh.Id,
+                        DeviceId = devId,
+                        DeviceName = devName,
+                        ReadingAt = now.AddDays(-day).AddHours(hour),
+                        TemperatureCelsius = t,
+                        IsBreach = t < 2m || t > 8m,
+                        Remarks = isBreach ? "Auto-detected — pending acknowledgement" : null
+                    });
+                }
+            }
+        }
+        db.ColdChainLogs.AddRange(ccLogs);
+
+        // 4) One Draft indent illustrating the supply-chain flow
+        var firstFacility = facilities.FirstOrDefault();
+        var firstDivision = divisions.FirstOrDefault();
+        var fmdDrug = drugs.FirstOrDefault(d => d.Code == "FMD-VAX");
+        if (firstFacility is not null && firstDivision is not null && fmdDrug is not null)
+        {
+            db.Indents.Add(new Indent
+            {
+                IndentNumber = $"IND-DEMO-{now:yyyyMMddHHmm}",
+                RaisedByWarehouseId = firstDivision.Id,
+                FulfilledByWarehouseId = central.Id,
+                Status = IndentStatus.Submitted,
+                SubmittedAt = now.AddDays(-1),
+                Remarks = "Demo indent — ready for CVO approval.",
+                Lines = new List<IndentLine>
+                {
+                    new() { DrugId = fmdDrug.Id, RequestedQuantity = 2_000m, Remarks = "Top-up for upcoming round" }
+                }
+            });
+        }
+
+        await db.SaveChangesAsync(ct);
     }
 
     private static List<ProcurementCampaign> BuildCampaigns(Guid fmdId, Guid bruId, int baseYear)
