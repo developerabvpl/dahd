@@ -16,7 +16,14 @@ public static class DependencyInjection
         var conn = config.GetConnectionString("Default")
                    ?? "Server=(localdb)\\MSSQLLocalDB;Database=DahdDev;Trusted_Connection=True;TrustServerCertificate=True;";
 
-        services.AddDbContext<DahdDbContext>(opts => opts.UseSqlServer(conn));
+        services.AddDbContext<DahdDbContext>(opts =>
+            opts.UseSqlServer(conn, sql =>
+                // LocalDB sleeps when idle and drops the first connection after wake-up;
+                // retry transparently so the first request after idle no longer fails.
+                sql.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(3),
+                    errorNumbersToAdd: null)));
 
         services.Configure<JwtOptions>(config.GetSection(JwtOptions.SectionName));
         services.AddHttpContextAccessor();

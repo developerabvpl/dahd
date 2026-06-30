@@ -267,3 +267,62 @@ public record CheapestRateRow(
     Guid RateContractId, string ContractNumber, string ContractTitle,
     Guid? VendorId, string? VendorName,
     decimal UnitRate, string? PackSize, DateOnly ContractValidUntil);
+
+// ---- Assets & maintenance ----
+
+public record AssetScheduleDto(
+    Guid Id, string TaskDescription, int FrequencyDays,
+    DateOnly? LastServiceDate, DateOnly NextDueDate, bool IsActive, int DaysToDue);
+
+public record AssetJobDto(
+    Guid Id, string JobNumber, MaintenanceJobType Type, MaintenanceJobStatus Status,
+    DateTime ReportedAt, string? ReportedBy, string Description,
+    string? AssignedTo, DateTime? StartedAt, DateTime? CompletedAt,
+    string? Resolution, decimal? Cost);
+
+public record AssetAmcDto(
+    Guid Id, string ContractNumber, string VendorName,
+    DateOnly StartDate, DateOnly EndDate, decimal AnnualCost,
+    string? Coverage, AmcStatus Status, int DaysToExpiry);
+
+public record AssetDto(
+    Guid Id, string AssetTag, string Name, AssetCategory Category,
+    string? Model, string? SerialNumber, string? Manufacturer,
+    Guid? WarehouseId, string? WarehouseName,
+    Guid? FacilityId, string? FacilityName, string? LocationNote,
+    DateOnly? PurchaseDate, decimal? PurchaseCost, DateOnly? WarrantyUntil,
+    AssetStatus Status, AssetCondition Condition, string? Notes,
+    int OpenJobs, int OverdueSchedules,
+    IReadOnlyList<AssetScheduleDto> Schedules,
+    IReadOnlyList<AssetJobDto> Jobs,
+    IReadOnlyList<AssetAmcDto> AmcContracts);
+
+public record CreateAssetRequest(
+    string AssetTag, string Name, AssetCategory Category,
+    string? Model, string? SerialNumber, string? Manufacturer,
+    Guid? WarehouseId, Guid? FacilityId, string? LocationNote,
+    DateOnly? PurchaseDate, decimal? PurchaseCost, DateOnly? WarrantyUntil,
+    AssetCondition Condition, string? Notes);
+
+public record UpdateAssetStatusRequest(AssetStatus Status, AssetCondition? Condition, string? Notes);
+
+public record CreateScheduleRequest(string TaskDescription, int FrequencyDays, DateOnly? LastServiceDate);
+
+public record LogBreakdownRequest(string Description, string? AssignedTo);
+
+public record CreatePpmJobRequest(Guid? ScheduleId, string Description, string? AssignedTo);
+
+public record CompleteJobRequest(string Resolution, decimal? Cost);
+
+public record CreateAmcRequest(
+    string ContractNumber, string VendorName,
+    DateOnly StartDate, DateOnly EndDate, decimal AnnualCost, string? Coverage);
+
+public record MaintenanceDueRow(
+    Guid AssetId, string AssetTag, string AssetName, AssetCategory Category,
+    Guid ScheduleId, string TaskDescription, DateOnly NextDueDate, int DaysToDue,
+    string? LocationName);
+
+public record AssetKpiDto(
+    int TotalAssets, int ActiveAssets, int UnderMaintenance, int InBreakdown,
+    int Condemned, int OpenJobs, int OverduePpm, int AmcExpiring60Days);

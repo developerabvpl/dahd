@@ -16,6 +16,7 @@
 | [05](05-open-questions.md) | Open questions & unverified claims | What did NOT survive adversarial verification; what to chase before any pitch |
 | [06](06-solution-architecture.md) | Reference solution architecture | .NET 9 API + Angular 19 frontend covering Drugs, Warehouses, Indents, Cold-chain, MVU dispensing |
 | [07](07-roadmap-phases.md) | Phased roadmap | Phase 0 (research) → Phase 1 (MVP) → Phase 2 (hardening) → Phase 3 (procurement) → Phase 4 (FEFO/analytics) → Phase 5 (INAPH bridge) → Phase 6 (scale-out). Each phase independently demoable and saleable. |
+| [09](09-asset-register-and-maintenance.md) | Asset register & maintenance | Equipment register (the procurement lane from [02](02-procurement-drugs-vaccines-assets.md)) plus the PPM / breakdown / AMC upkeep add-on. Seeded with 12 assets, 8 PPMs, 2 breakdowns, 3 AMCs. |
 | [08](08-pitch-deck.md) | Pitch deck (10 slides) | Slide-by-slide outline for a 20-minute pitch to UP AHD leadership, anchored in verified research + the live demo modules in this repo. |
 
 ## How the research was produced

@@ -1,0 +1,92 @@
+<h2>Maintenance</h2>
+<p style="color:#6b7d90; margin-bottom:1rem">D11 Asset Lifecycle: PPM schedules due soon/overdue, plus the breakdown & PPM job board. Start a job, then complete it with a resolution — the asset returns to Active and the linked PPM schedule rolls forward automatically.</p>
+
+@if (notice()) { <div class="card" style="color:#065f46">{{ notice() }}</div> }
+@if (error())  { <div class="card" style="color:#b91c1c">{{ error() }}</div> }
+
+<div class="card">
+  <h3 style="margin-top:0; display:flex; justify-content:space-between; align-items:center">
+    PPM due
+    <span>
+      @for (d of [15, 30, 60, 90]; track d) {
+        <button (click)="withinDays.set(d); load()" [class.primary]="withinDays() === d">≤ {{ d }}d</button>
+      }
+    </span>
+  </h3>
+  @if (loading()) {
+    <p>Loading...</p>
+  } @else if (due().length === 0) {
+    <p>No PPM schedules due within {{ withinDays() }} days. 🎉</p>
+  } @else {
+    <table>
+      <thead>
+        <tr><th>Asset</th><th>Task</th><th>Location</th><th>Next Due</th><th>State</th></tr>
+      </thead>
+      <tbody>
+        @for (r of due(); track r.scheduleId) {
+          <tr>
+            <td><strong>{{ r.assetTag }}</strong> — {{ r.assetName }}</td>
+            <td>{{ r.taskDescription }}</td>
+            <td>{{ r.locationName }}</td>
+            <td>{{ r.nextDueDate }}</td>
+            <td>
+              @if (r.daysToDue < 0) { <span class="badge bad">overdue {{ -r.daysToDue }}d</span> }
+              @else { <span class="badge {{ dueCls(r.daysToDue) }}">due in {{ r.daysToDue }}d</span> }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0; display:flex; justify-content:space-between; align-items:center">
+    Job board
+    <span>
+      <button (click)="jobStatusFilter.set('Open'); load()" [class.primary]="jobStatusFilter() === 'Open'">Open</button>
+      <button (click)="jobStatusFilter.set('InProgress'); load()" [class.primary]="jobStatusFilter() === 'InProgress'">In Progress</button>
+      <button (click)="jobStatusFilter.set('Completed'); load()" [class.primary]="jobStatusFilter() === 'Completed'">Completed</button>
+      <button (click)="jobStatusFilter.set(''); load()" [class.primary]="jobStatusFilter() === ''">All</button>
+    </span>
+  </h3>
+  @if (loading()) {
+    <p>Loading...</p>
+  } @else if (jobs().length === 0) {
+    <p>No jobs in this view.</p>
+  } @else {
+    <table>
+      <thead>
+        <tr><th>Job</th><th>Type</th><th>Status</th><th>Reported</th><th>Description</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        @for (j of jobs(); track j.id) {
+          <tr>
+            <td>{{ j.jobNumber }}</td>
+            <td><span class="badge">{{ j.type }}</span></td>
+            <td><span class="badge {{ jobStatusCls(j.status) }}">{{ j.status }}</span></td>
+            <td>{{ j.reportedAt | date:'short' }}</td>
+            <td>
+              {{ j.description }}
+              @if (j.resolution) { <br><small style="color:#065f46">✓ {{ j.resolution }} @if (j.cost) { (₹{{ j.cost | number }}) }</small> }
+            </td>
+            <td class="actions">
+              @if (canAct()) {
+                @if (j.status === 'Open') {
+                  <button (click)="start(j)" [disabled]="busyId() === j.id">Start</button>
+                }
+                @if (j.status === 'Open' || j.status === 'InProgress') {
+                  <div style="display:flex; gap:0.3rem; margin-top:0.3rem">
+                    <input type="text" placeholder="resolution" [ngModel]="resolutionInput()[j.id] || ''" (ngModelChange)="setResolution(j.id, $event)" name="res-{{ j.id }}" style="min-width:160px" />
+                    <input type="number" placeholder="cost" [ngModel]="costInput()[j.id] || ''" (ngModelChange)="setCost(j.id, $event)" name="cost-{{ j.id }}" style="width:80px" />
+                    <button (click)="complete(j)" [disabled]="busyId() === j.id">Complete</button>
+                  </div>
+                }
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

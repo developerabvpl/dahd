@@ -23,6 +23,10 @@ public class DahdDbContext : DbContext
     public DbSet<ProcurementCampaign> ProcurementCampaigns => Set<ProcurementCampaign>();
     public DbSet<RateContract> RateContracts => Set<RateContract>();
     public DbSet<RateContractItem> RateContractItems => Set<RateContractItem>();
+    public DbSet<Asset> Assets => Set<Asset>();
+    public DbSet<MaintenanceSchedule> MaintenanceSchedules => Set<MaintenanceSchedule>();
+    public DbSet<MaintenanceJob> MaintenanceJobs => Set<MaintenanceJob>();
+    public DbSet<AmcContract> AmcContracts => Set<AmcContract>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -204,6 +208,53 @@ public class DahdDbContext : DbContext
             e.HasOne(i => i.Drug).WithMany().HasForeignKey(i => i.DrugId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(i => i.Vendor).WithMany().HasForeignKey(i => i.VendorId).OnDelete(DeleteBehavior.SetNull);
             e.HasIndex(i => new { i.RateContractId, i.DrugId });
+        });
+
+        modelBuilder.Entity<Asset>(e =>
+        {
+            e.Property(a => a.AssetTag).HasMaxLength(40).IsRequired();
+            e.Property(a => a.Name).HasMaxLength(200).IsRequired();
+            e.Property(a => a.Model).HasMaxLength(120);
+            e.Property(a => a.SerialNumber).HasMaxLength(120);
+            e.Property(a => a.Manufacturer).HasMaxLength(200);
+            e.Property(a => a.LocationNote).HasMaxLength(300);
+            e.Property(a => a.Notes).HasMaxLength(1000);
+            e.Property(a => a.PurchaseCost).HasPrecision(18, 2);
+            e.HasIndex(a => a.AssetTag).IsUnique();
+            e.HasIndex(a => a.Status);
+            e.HasOne(a => a.Warehouse).WithMany().HasForeignKey(a => a.WarehouseId).OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(a => a.Facility).WithMany().HasForeignKey(a => a.FacilityId).OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<MaintenanceSchedule>(e =>
+        {
+            e.Property(s => s.TaskDescription).HasMaxLength(300).IsRequired();
+            e.HasIndex(s => s.NextDueDate);
+            e.HasOne(s => s.Asset).WithMany(a => a.Schedules).HasForeignKey(s => s.AssetId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<MaintenanceJob>(e =>
+        {
+            e.Property(j => j.JobNumber).HasMaxLength(40).IsRequired();
+            e.Property(j => j.Description).HasMaxLength(1000).IsRequired();
+            e.Property(j => j.ReportedBy).HasMaxLength(80);
+            e.Property(j => j.AssignedTo).HasMaxLength(120);
+            e.Property(j => j.Resolution).HasMaxLength(1000);
+            e.Property(j => j.Cost).HasPrecision(18, 2);
+            e.HasIndex(j => j.JobNumber).IsUnique();
+            e.HasIndex(j => new { j.AssetId, j.Status });
+            e.HasOne(j => j.Asset).WithMany(a => a.Jobs).HasForeignKey(j => j.AssetId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(j => j.Schedule).WithMany().HasForeignKey(j => j.ScheduleId).OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<AmcContract>(e =>
+        {
+            e.Property(a => a.ContractNumber).HasMaxLength(60).IsRequired();
+            e.Property(a => a.VendorName).HasMaxLength(200).IsRequired();
+            e.Property(a => a.Coverage).HasMaxLength(500);
+            e.Property(a => a.AnnualCost).HasPrecision(18, 2);
+            e.HasIndex(a => a.ContractNumber).IsUnique();
+            e.HasOne(a => a.Asset).WithMany(x => x.AmcContracts).HasForeignKey(a => a.AssetId).OnDelete(DeleteBehavior.Cascade);
         });
 
         base.OnModelCreating(modelBuilder);

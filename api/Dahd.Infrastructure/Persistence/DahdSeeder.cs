@@ -59,6 +59,110 @@ public static class DahdSeeder
         {
             await SeedRateContractsAsync(db, ct);
         }
+
+        if (!await db.Assets.AnyAsync(ct))
+        {
+            await SeedAssetsAsync(db, ct);
+        }
+    }
+
+    private static async Task SeedAssetsAsync(DahdDbContext db, CancellationToken ct)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var warehouses = await db.Warehouses.ToListAsync(ct);
+        var facilities = await db.Facilities.ToListAsync(ct);
+        var central = warehouses.FirstOrDefault(w => w.Code == "WH-CMS") ?? warehouses.FirstOrDefault();
+        var hospital = facilities.FirstOrDefault(f => f.Type == FacilityType.VeterinaryHospital);
+        var mvu = facilities.FirstOrDefault(f => f.Type == FacilityType.MobileVeterinaryUnit);
+
+        Asset A(string tag, string name, AssetCategory cat, string model, string mfr,
+                Guid? whId, Guid? facId, int ageMonths, decimal cost, AssetCondition cond) => new()
+        {
+            AssetTag = tag, Name = name, Category = cat, Model = model, Manufacturer = mfr,
+            SerialNumber = $"SN-{tag}",
+            WarehouseId = whId, FacilityId = facId,
+            PurchaseDate = today.AddMonths(-ageMonths),
+            PurchaseCost = cost,
+            WarrantyUntil = today.AddMonths(-ageMonths).AddMonths(36),
+            Status = AssetStatus.Active, Condition = cond
+        };
+
+        var assets = new List<Asset>
+        {
+            A("AST-ILR-001", "Ice-Lined Refrigerator (vaccine)", AssetCategory.ColdChainEquipment, "Vestfrost VLS-054", "Vestfrost", central?.Id, null, 14, 185000m, AssetCondition.Good),
+            A("AST-ILR-002", "Ice-Lined Refrigerator (vaccine)", AssetCategory.ColdChainEquipment, "Vestfrost VLS-054", "Vestfrost", central?.Id, null, 26, 185000m, AssetCondition.Fair),
+            A("AST-DF-001",  "Deep Freezer -20°C", AssetCategory.ColdChainEquipment, "Blue Star CF3-300", "Blue Star", central?.Id, null, 20, 95000m, AssetCondition.Good),
+            A("AST-USG-001", "Portable Ultrasound Scanner", AssetCategory.DiagnosticEquipment, "Mindray DP-10Vet", "Mindray", null, hospital?.Id, 8, 420000m, AssetCondition.New),
+            A("AST-MIC-001", "Binocular Microscope", AssetCategory.LabEquipment, "Olympus CX23", "Olympus", null, hospital?.Id, 30, 78000m, AssetCondition.Fair),
+            A("AST-ACL-001", "Autoclave 50L", AssetCategory.LabEquipment, "Equitron 7501", "Equitron", null, hospital?.Id, 40, 132000m, AssetCondition.Poor),
+            A("AST-AIG-001", "AI Gun Kit + LN2 Container 10L", AssetCategory.AiEquipment, "IMV Technologies", "IMV", central?.Id, null, 18, 64000m, AssetCondition.Good),
+            A("AST-LN2-001", "Liquid Nitrogen Container 35L", AssetCategory.AiEquipment, "IBP BA-35", "IBP", central?.Id, null, 22, 88000m, AssetCondition.Good),
+            A("AST-MVU-001", "MVU Vehicle (Bolero)", AssetCategory.Vehicle, "Mahindra Bolero", "Mahindra", null, mvu?.Id, 16, 985000m, AssetCondition.Good),
+            A("AST-XRY-001", "Portable X-Ray Unit", AssetCategory.DiagnosticEquipment, "Allengers MARS-15", "Allengers", null, hospital?.Id, 28, 540000m, AssetCondition.Fair),
+            A("AST-GEN-001", "Diesel Generator 15kVA", AssetCategory.Other, "Kirloskar KG1-15", "Kirloskar", central?.Id, null, 44, 310000m, AssetCondition.Fair),
+            A("AST-PC-001",  "Desktop PC (records)", AssetCategory.ItHardware, "HP ProDesk 400", "HP", central?.Id, null, 34, 48000m, AssetCondition.Fair)
+        };
+        db.Assets.AddRange(assets);
+        await db.SaveChangesAsync(ct);
+
+        // PPM schedules — some overdue, some upcoming
+        void Sched(string tag, string task, int freq, int lastServiceMonthsAgo)
+        {
+            var a = assets.First(x => x.AssetTag == tag);
+            var last = today.AddMonths(-lastServiceMonthsAgo);
+            db.MaintenanceSchedules.Add(new MaintenanceSchedule
+            {
+                AssetId = a.Id, TaskDescription = task, FrequencyDays = freq,
+                LastServiceDate = last, NextDueDate = last.AddDays(freq), IsActive = true
+            });
+        }
+        Sched("AST-ILR-001", "Quarterly temperature calibration + gasket check", 90, 4);   // overdue
+        Sched("AST-ILR-002", "Quarterly temperature calibration + gasket check", 90, 1);   // upcoming
+        Sched("AST-DF-001",  "Half-yearly compressor service", 180, 7);                    // overdue
+        Sched("AST-USG-001", "Annual probe + software calibration", 365, 2);               // upcoming
+        Sched("AST-ACL-001", "Quarterly pressure-valve + seal service", 90, 5);            // overdue
+        Sched("AST-MVU-001", "Vehicle service every 10,000 km (~quarterly)", 90, 2);       // upcoming
+        Sched("AST-XRY-001", "Annual radiation-safety + calibration", 365, 13);            // overdue
+        Sched("AST-GEN-001", "Quarterly oil change + load test", 90, 2);                   // upcoming
+        await db.SaveChangesAsync(ct);
+
+        // Open breakdowns
+        void Breakdown(string tag, string desc, string assignedTo)
+        {
+            var a = assets.First(x => x.AssetTag == tag);
+            db.MaintenanceJobs.Add(new MaintenanceJob
+            {
+                AssetId = a.Id,
+                JobNumber = $"BRK-SEED-{tag}",
+                Type = MaintenanceJobType.Breakdown,
+                Status = MaintenanceJobStatus.Open,
+                ReportedAt = DateTime.UtcNow.AddDays(-3),
+                ReportedBy = "wh",
+                Description = desc,
+                AssignedTo = assignedTo
+            });
+            a.Status = AssetStatus.BreakdownReported;
+        }
+        Breakdown("AST-ACL-001", "Autoclave not reaching set pressure; safety valve hissing.", "Equitron Service");
+        Breakdown("AST-XRY-001", "X-ray exposure inconsistent; suspect HT cable fault.", "Allengers AMC");
+        await db.SaveChangesAsync(ct);
+
+        // AMC contracts
+        void Amc(string tag, string num, string vendor, decimal cost, string coverage, int startMonthsAgo)
+        {
+            var a = assets.First(x => x.AssetTag == tag);
+            var start = today.AddMonths(-startMonthsAgo);
+            db.AmcContracts.Add(new AmcContract
+            {
+                AssetId = a.Id, ContractNumber = num, VendorName = vendor,
+                StartDate = start, EndDate = start.AddYears(1), AnnualCost = cost,
+                Coverage = coverage, Status = AmcStatus.Active
+            });
+        }
+        Amc("AST-USG-001", "AMC-USG-001", "Mindray India", 28000m, "Comprehensive incl. probe", 2);
+        Amc("AST-XRY-001", "AMC-XRY-001", "Allengers Medical", 45000m, "Comprehensive + radiation safety", 11); // expiring soon
+        Amc("AST-MVU-001", "AMC-MVU-001", "Mahindra First Choice", 22000m, "Labour + periodic service", 4);
+        await db.SaveChangesAsync(ct);
     }
 
     private static async Task SeedRateContractsAsync(DahdDbContext db, CancellationToken ct)
