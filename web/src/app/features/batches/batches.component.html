@@ -1,11 +1,54 @@
-<h2>Batches</h2>
-<p style="color:#6b7d90; margin-bottom:1.25rem">Batch-level stock with expiry tracking. FEFO logic anchors the near-expiry redistribution flow (RMSC template).</p>
+<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap">
+  <div>
+    <h2>Batches</h2>
+    <p style="color:#6b7d90; margin:0 0 1rem">Batch-level stock with expiry tracking. Receive new stock (goods receipt) here — it becomes available for indent issue (FEFO) and dispensing.</p>
+  </div>
+  @if (canReceive()) {
+    <button class="primary" (click)="toggleReceive()">{{ showReceive() ? 'Close' : '+ Receive stock' }}</button>
+  }
+</div>
+
+@if (notice()) { <div class="card" style="color:#065f46">{{ notice() }}</div> }
+@if (error())  { <div class="card" style="color:#b91c1c">{{ error() }}</div> }
+
+@if (showReceive()) {
+  <div class="card">
+    <h3 style="margin-top:0">Receive stock (goods receipt)</h3>
+    <form class="grid" (ngSubmit)="receive()">
+      <label>
+        <span>Drug *</span>
+        <select [(ngModel)]="draft.drugId" name="drugId" required>
+          <option value="" disabled>— select drug —</option>
+          @for (d of drugs(); track d.id) { <option [value]="d.id">{{ d.code }} — {{ d.name }}</option> }
+        </select>
+      </label>
+      <label>
+        <span>Warehouse *</span>
+        <select [(ngModel)]="draft.currentWarehouseId" name="whId" required>
+          <option value="" disabled>— select warehouse —</option>
+          @for (w of warehouses(); track w.id) { <option [value]="w.id">{{ w.code }} — {{ w.name }}</option> }
+        </select>
+      </label>
+      <label><span>Batch number *</span><input type="text" [(ngModel)]="draft.batchNumber" name="batchNo" required /></label>
+      <label><span>Manufacturer</span><input type="text" [(ngModel)]="draft.manufacturer" name="mfr" /></label>
+      <label><span>Manufacture date *</span><input type="date" [(ngModel)]="draft.manufactureDate" name="mfg" required /></label>
+      <label><span>Expiry date *</span><input type="date" [(ngModel)]="draft.expiryDate" name="exp" required /></label>
+      <label><span>Quantity *</span><input type="number" min="1" step="1" [(ngModel)]="draft.quantity" name="qty" required /></label>
+      <label><span>Unit cost (₹)</span><input type="number" min="0" step="0.01" [(ngModel)]="draft.unitCost" name="cost" /></label>
+      <label><span>PO / GRN ref</span><input type="text" [(ngModel)]="draft.purchaseOrderRef" name="po" /></label>
+      <div class="actions">
+        <button type="submit" class="primary" [disabled]="saving()">{{ saving() ? 'Receiving...' : 'Receive into stock' }}</button>
+      </div>
+    </form>
+    <small style="color:#6b7d90">Cold-chain drugs can only be received into a cold-chain-capable warehouse (the server enforces this).</small>
+  </div>
+}
 
 <div class="card">
   @if (loading()) {
     <p>Loading...</p>
   } @else if (batches().length === 0) {
-    <p>No batches yet. Add one via POST /api/batches in Swagger.</p>
+    <p>No batches yet. @if (canReceive()) { Use “+ Receive stock” to add the first goods receipt. }</p>
   } @else {
     <table>
       <thead>

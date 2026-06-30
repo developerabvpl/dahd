@@ -1,46 +1,206 @@
-<h2>Indents</h2>
-<p style="color:#6b7d90; margin-bottom:1rem">Indent flow with stock movement: Draft → Submitted → Approved → Issued (FEFO allocates a batch and decrements source) → Received (creates / tops-up batch at destination).</p>
+<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap">
+  <div>
+    <h2>Indents</h2>
+    <p style="color:#6b7d90; margin:0 0 1rem">Inter-store indents. Every indent shows its line items — you review the lines (and adjust approved quantities) <strong>before</strong> approving, issuing, or receiving. Issue allocates stock FEFO from the source warehouse.</p>
+  </div>
+  @if (canSubmit()) {
+    <button class="primary" (click)="toggleCreate()">{{ showCreate() ? 'Close' : '+ Raise indent' }}</button>
+  }
+</div>
 
-@if (error()) {
-  <div class="card" style="color:#b91c1c">{{ error() }}</div>
-}
+@if (notice()) { <div class="card" style="color:#065f46">{{ notice() }}</div> }
+@if (error())  { <div class="card" style="color:#b91c1c">{{ error() }}</div> }
 
-<div class="card">
-  @if (loading()) {
-    <p>Loading...</p>
-  } @else if (indents().length === 0) {
-    <p>No indents yet. Create one via POST /api/indents in Swagger.</p>
-  } @else {
+<!-- Raise indent form -->
+@if (showCreate()) {
+  <div class="card">
+    <h3 style="margin-top:0">Raise a new indent</h3>
+    <div class="action-row">
+      <label>Raising warehouse (recipient)
+        <select [(ngModel)]="draft.raisedByWarehouseId" name="raisedBy">
+          <option value="" disabled>— select —</option>
+          @for (w of warehouses(); track w.id) { <option [value]="w.id">{{ w.code }} — {{ w.name }}</option> }
+        </select>
+      </label>
+      <label>Source warehouse (fulfils)
+        <select [(ngModel)]="draft.fulfilledByWarehouseId" name="fulfilledBy">
+          <option value="" disabled>— select —</option>
+          @for (w of warehouses(); track w.id) { <option [value]="w.id">{{ w.code }} — {{ w.name }}</option> }
+        </select>
+      </label>
+    </div>
+    <h4>Lines</h4>
     <table>
-      <thead>
-        <tr>
-          <th>Indent No.</th>
-          <th>Raised By</th>
-          <th>Fulfilled By</th>
-          <th>Status</th>
-          <th>Lines</th>
-          <th>Updated</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
+      <thead><tr><th>Drug</th><th>Requested Qty</th><th>Remarks</th><th></th></tr></thead>
       <tbody>
-        @for (i of indents(); track i.id) {
+        @for (l of draft.lines; track $index) {
           <tr>
-            <td>{{ i.indentNumber }}</td>
-            <td>{{ i.raisedByWarehouseName }}</td>
-            <td>{{ i.fulfilledByWarehouseName }}</td>
-            <td><span class="badge {{ statusBadge(i.status) }}">{{ i.status }}</span></td>
-            <td>{{ i.lines.length }}</td>
-            <td>{{ i.receivedAt || i.issuedAt || i.approvedAt || i.submittedAt }}</td>
-            <td class="actions">
-              @if (canDo('submit', i))  { <button (click)="fire('submit', i)"  [disabled]="busyId() === i.id">Submit</button> }
-              @if (canDo('approve', i)) { <button (click)="fire('approve', i)" [disabled]="busyId() === i.id">Approve</button> }
-              @if (canDo('issue', i))   { <button (click)="fire('issue', i)"   [disabled]="busyId() === i.id">Issue (FEFO)</button> }
-              @if (canDo('receive', i)) { <button (click)="fire('receive', i)" [disabled]="busyId() === i.id">Receive</button> }
+            <td>
+              <select [(ngModel)]="l.drugId" name="drug-{{ $index }}">
+                <option value="" disabled>— select drug —</option>
+                @for (d of drugs(); track d.id) { <option [value]="d.id">{{ d.code }} — {{ d.name }}</option> }
+              </select>
             </td>
+            <td><input type="number" min="1" step="1" [(ngModel)]="l.requestedQuantity" name="qty-{{ $index }}" style="width:100px" /></td>
+            <td><input type="text" [(ngModel)]="l.remarks" name="rem-{{ $index }}" /></td>
+            <td>@if (draft.lines.length > 1) { <button (click)="removeLine($index)">✕</button> }</td>
           </tr>
         }
       </tbody>
     </table>
+    <div class="action-row" style="margin-top:0.5rem">
+      <button (click)="addLine()">+ Add line</button>
+      <label style="flex:1">Remarks <input type="text" [(ngModel)]="draft.remarks" name="indentRemarks" /></label>
+      <button class="primary" (click)="createIndent()" [disabled]="busyId() === 'create'">
+        {{ busyId() === 'create' ? 'Creating...' : 'Create indent (Draft)' }}
+      </button>
+    </div>
+  </div>
+}
+
+<!-- Status tabs -->
+<div class="card" style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap">
+  <button (click)="statusFilter.set('')" [class.primary]="statusFilter() === ''">All ({{ indents().length }})</button>
+  @for (s of statuses; track s) {
+    <button (click)="statusFilter.set(s)" [class.primary]="statusFilter() === s">{{ s }} ({{ countFor(s) }})</button>
   }
 </div>
+
+@if (loading()) {
+  <div class="card">Loading...</div>
+} @else if (filtered().length === 0) {
+  <div class="card">No indents in this view. @if (canSubmit()) { Use “+ Raise indent” to create one. }</div>
+} @else {
+  @for (i of filtered(); track i.id) {
+    <div class="card">
+      <!-- header -->
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem">
+        <div>
+          <strong style="font-size:1rem">{{ i.indentNumber }}</strong>
+          <span class="badge {{ statusBadge(i.status) }}" style="margin-left:0.5rem">{{ i.status }}</span>
+        </div>
+        <small style="color:#6b7d90">
+          📥 {{ i.raisedByWarehouseName }} &nbsp;←&nbsp; 📤 {{ i.fulfilledByWarehouseName }}
+          @if (i.submittedAt) { · submitted {{ i.submittedAt | date:'short' }} }
+          @if (i.approvedAt) { · approved {{ i.approvedAt | date:'short' }} }
+          @if (i.issuedAt) { · issued {{ i.issuedAt | date:'short' }} }
+          @if (i.receivedAt) { · received {{ i.receivedAt | date:'short' }} }
+        </small>
+      </div>
+
+      <!-- lines ALWAYS visible -->
+      <table style="margin-top:0.6rem">
+        <thead>
+          <tr><th>Drug</th><th>Requested</th><th>Approved</th><th>Issued</th><th>Received</th><th>Batch</th></tr>
+        </thead>
+        <tbody>
+          @for (l of i.lines; track l.id) {
+            <tr>
+              <td><strong>{{ l.drugCode }}</strong> — {{ l.drugName }}</td>
+              <td>{{ l.requestedQuantity }}</td>
+              <td>{{ l.approvedQuantity ?? '—' }}</td>
+              <td>{{ l.issuedQuantity ?? '—' }}</td>
+              <td>{{ l.receivedQuantity ?? '—' }}</td>
+              <td>@if (l.issuedBatchId) { <span class="badge">allocated</span> } @else { — }</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      @if (i.remarks) { <small style="color:#6b7d90">📝 {{ i.remarks }}</small> }
+
+      <!-- ===== APPROVE review panel ===== -->
+      @if (isReviewing(i, 'approve')) {
+        <div style="margin-top:0.7rem; padding:0.7rem; background:#fffbeb; border:1px solid #fcd34d; border-radius:6px">
+          <strong>Review &amp; approve</strong> — adjust the approved quantity per line if needed, then confirm.
+          <table style="margin-top:0.4rem">
+            <thead><tr><th>Drug</th><th>Requested</th><th>Approve Qty</th></tr></thead>
+            <tbody>
+              @for (l of i.lines; track l.id) {
+                <tr>
+                  <td>{{ l.drugCode }} — {{ l.drugName }}</td>
+                  <td>{{ l.requestedQuantity }}</td>
+                  <td><input type="number" min="0" step="1" [ngModel]="approveQty()[l.id]" (ngModelChange)="setApproveQty(l.id, $event)" name="appr-{{ l.id }}" style="width:100px" /></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          <div class="action-row" style="margin-top:0.4rem">
+            <button class="primary" (click)="confirmApprove(i)" [disabled]="busyId() === i.id">Confirm approve</button>
+            <button (click)="cancelReview()">Cancel</button>
+          </div>
+        </div>
+      }
+
+      <!-- ===== ISSUE review panel ===== -->
+      @if (isReviewing(i, 'issue')) {
+        <div style="margin-top:0.7rem; padding:0.7rem; background:#eff6ff; border:1px solid #93c5fd; border-radius:6px">
+          <strong>Review &amp; issue</strong> — FEFO will allocate the oldest-expiry batch at <em>{{ i.fulfilledByWarehouseName }}</em>. Confirm available stock covers each line.
+          <table style="margin-top:0.4rem">
+            <thead><tr><th>Drug</th><th>To issue</th><th>Available at source</th><th></th></tr></thead>
+            <tbody>
+              @for (l of i.lines; track l.id) {
+                <tr>
+                  <td>{{ l.drugCode }} — {{ l.drugName }}</td>
+                  <td>{{ issuableLine(l) }}</td>
+                  <td>{{ stockFor(l.drugId) }}</td>
+                  <td>@if (canFulfilLine(l)) { <span class="badge ok">OK</span> } @else { <span class="badge bad">short</span> }</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          @if (!allLinesFulfillable(i)) {
+            <small style="color:#b91c1c">One or more lines exceed available stock — issue will be rejected by the server for those lines.</small>
+          }
+          <div class="action-row" style="margin-top:0.4rem">
+            <button class="primary" (click)="confirmIssue(i)" [disabled]="busyId() === i.id || !allLinesFulfillable(i)">Confirm issue (FEFO)</button>
+            <button (click)="cancelReview()">Cancel</button>
+          </div>
+        </div>
+      }
+
+      <!-- ===== RECEIVE review panel ===== -->
+      @if (isReviewing(i, 'receive')) {
+        <div style="margin-top:0.7rem; padding:0.7rem; background:#ecfdf5; border:1px solid #6ee7b7; border-radius:6px">
+          <strong>Confirm receipt</strong> — the issued quantity on every line will be received into <em>{{ i.raisedByWarehouseName }}</em>.
+          <table style="margin-top:0.4rem">
+            <thead><tr><th>Drug</th><th>Issued</th></tr></thead>
+            <tbody>
+              @for (l of i.lines; track l.id) {
+                <tr><td>{{ l.drugCode }} — {{ l.drugName }}</td><td>{{ l.issuedQuantity ?? 0 }}</td></tr>
+              }
+            </tbody>
+          </table>
+          <div class="action-row" style="margin-top:0.4rem">
+            <button class="primary" (click)="confirmReceive(i)" [disabled]="busyId() === i.id">Confirm receive</button>
+            <button (click)="cancelReview()">Cancel</button>
+          </div>
+        </div>
+      }
+
+      <!-- action buttons (only when not already reviewing this indent) -->
+      @if (reviewId() !== i.id) {
+        <div class="action-row" style="margin-top:0.6rem">
+          @if (i.status === 'Draft' && canSubmit()) {
+            <button class="primary" (click)="submit(i)" [disabled]="busyId() === i.id">Submit</button>
+          }
+          @if (i.status === 'Submitted' && canApprove()) {
+            <button class="primary" (click)="beginApprove(i)">Review &amp; approve</button>
+          }
+          @if (i.status === 'Submitted' && !canApprove()) {
+            <small style="color:#6b7d90">🔒 Awaiting approval by CVO / Director.</small>
+          }
+          @if (i.status === 'Approved' && canIssue()) {
+            <button class="primary" (click)="beginIssue(i)">Review &amp; issue</button>
+          }
+          @if (i.status === 'Issued' && canIssue()) {
+            <button class="primary" (click)="beginReceive(i)">Review &amp; receive</button>
+          }
+          @if (i.status === 'Received') {
+            <small style="color:#065f46">✓ Closed — received {{ i.receivedAt | date:'short' }}</small>
+          }
+        </div>
+      }
+    </div>
+  }
+}

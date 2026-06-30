@@ -98,6 +98,29 @@ export interface Indent {
   lines: IndentLine[];
 }
 
+export interface CreateIndentLineRequest { drugId: string; requestedQuantity: number; remarks?: string; }
+export interface CreateIndentRequest {
+  raisedByWarehouseId: string;
+  fulfilledByWarehouseId: string;
+  remarks?: string;
+  lines: CreateIndentLineRequest[];
+}
+
+export interface LineApproval { lineId: string; approvedQuantity: number; }
+export interface ApproveIndentRequest { lineApprovals?: LineApproval[]; }
+
+export interface CreateBatchRequest {
+  drugId: string;
+  batchNumber: string;
+  manufactureDate: string;
+  expiryDate: string;
+  manufacturer?: string;
+  quantity: number;
+  unitCost: number;
+  currentWarehouseId: string;
+  purchaseOrderRef?: string;
+}
+
 export interface ColdChainLog {
   id: string;
   warehouseId: string;

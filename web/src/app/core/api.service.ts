@@ -3,8 +3,9 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
-  AcknowledgeBreachRequest, Batch, ColdChainLog, DashboardKpi, DispenseEvent,
-  Drug, Facility, Indent, StockByDrugRow, Warehouse
+  AcknowledgeBreachRequest, ApproveIndentRequest, Batch, ColdChainLog,
+  CreateBatchRequest, CreateIndentRequest, DashboardKpi, DispenseEvent,
+  Drug, Facility, Indent, IndentStatus, LineApproval, StockByDrugRow, Warehouse
 } from './models';
 
 @Injectable({ providedIn: 'root' })
@@ -50,21 +51,36 @@ export class ApiService {
     return this.http.get<StockByDrugRow[]>(`${this.base}/batches/stock-by-drug`, { params });
   }
 
-  getIndents(): Observable<Indent[]> {
-    return this.http.get<Indent[]>(`${this.base}/indents`);
+  getIndents(status?: IndentStatus): Observable<Indent[]> {
+    const params: Record<string, string> = {};
+    if (status) params['status'] = status;
+    return this.http.get<Indent[]>(`${this.base}/indents`, { params });
+  }
+
+  getIndent(id: string): Observable<Indent> {
+    return this.http.get<Indent>(`${this.base}/indents/${id}`);
+  }
+
+  createIndent(req: CreateIndentRequest): Observable<Indent> {
+    return this.http.post<Indent>(`${this.base}/indents`, req);
   }
 
   submitIndent(id: string): Observable<Indent> {
     return this.http.post<Indent>(`${this.base}/indents/${id}/submit`, {});
   }
-  approveIndent(id: string): Observable<Indent> {
-    return this.http.post<Indent>(`${this.base}/indents/${id}/approve`, {});
+  approveIndent(id: string, lineApprovals?: LineApproval[]): Observable<Indent> {
+    const body: ApproveIndentRequest = { lineApprovals };
+    return this.http.post<Indent>(`${this.base}/indents/${id}/approve`, body);
   }
   issueIndent(id: string): Observable<Indent> {
     return this.http.post<Indent>(`${this.base}/indents/${id}/issue`, {});
   }
   receiveIndent(id: string): Observable<Indent> {
     return this.http.post<Indent>(`${this.base}/indents/${id}/receive`, {});
+  }
+
+  createBatch(req: CreateBatchRequest): Observable<Batch> {
+    return this.http.post<Batch>(`${this.base}/batches`, req);
   }
 
   getColdChainLogs(opts?: {
