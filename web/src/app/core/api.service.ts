@@ -72,6 +72,12 @@ export class ApiService {
     const body: ApproveIndentRequest = { lineApprovals };
     return this.http.post<Indent>(`${this.base}/indents/${id}/approve`, body);
   }
+  rejectIndent(id: string, reason: string): Observable<Indent> {
+    return this.http.post<Indent>(`${this.base}/indents/${id}/reject`, { reason });
+  }
+  cancelIndent(id: string): Observable<Indent> {
+    return this.http.post<Indent>(`${this.base}/indents/${id}/cancel`, {});
+  }
   issueIndent(id: string): Observable<Indent> {
     return this.http.post<Indent>(`${this.base}/indents/${id}/issue`, {});
   }

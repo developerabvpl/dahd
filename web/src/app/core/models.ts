@@ -3,7 +3,7 @@ export type FacilityType =
   | 'VeterinaryHospital' | 'Polyclinic' | 'RuralDispensary'
   | 'AiSubCentre' | 'MobileVeterinaryUnit' | 'Gaushala';
 export type BatchStatus = 'InTransit' | 'InStore' | 'Issued' | 'Expired' | 'Wasted' | 'Recalled';
-export type IndentStatus = 'Draft' | 'Submitted' | 'Approved' | 'Issued' | 'Received' | 'Closed' | 'Rejected';
+export type IndentStatus = 'Draft' | 'Submitted' | 'Approved' | 'Issued' | 'Received' | 'Closed' | 'Rejected' | 'Cancelled';
 export type FormularyClass =
   | 'Antibiotic' | 'Antiparasitic' | 'Vaccine' | 'Vitamin' | 'Hormone'
   | 'Mineral' | 'Analgesic' | 'Anaesthetic' | 'Antiseptic' | 'Other';
@@ -94,6 +94,9 @@ export interface Indent {
   approvedAt?: string;
   issuedAt?: string;
   receivedAt?: string;
+  rejectedAt?: string;
+  cancelledAt?: string;
+  rejectionReason?: string;
   remarks?: string;
   lines: IndentLine[];
 }

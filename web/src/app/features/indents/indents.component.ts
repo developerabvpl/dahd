@@ -8,7 +8,7 @@ import {
   CreateIndentLineRequest, Drug, Indent, IndentLine, IndentStatus, LineApproval, Warehouse
 } from '../../core/models';
 
-type ReviewMode = 'approve' | 'issue' | 'receive';
+type ReviewMode = 'approve' | 'issue' | 'receive' | 'reject';
 
 @Component({
   selector: 'app-indents',
@@ -41,7 +41,8 @@ export class IndentsComponent implements OnInit, OnDestroy {
   readonly showCreate = signal(false);
   draft = this.blankDraft();
 
-  readonly statuses: IndentStatus[] = ['Draft', 'Submitted', 'Approved', 'Issued', 'Received'];
+  readonly statuses: IndentStatus[] = ['Draft', 'Submitted', 'Approved', 'Issued', 'Received', 'Rejected', 'Cancelled'];
+  readonly rejectReason = signal('');
 
   readonly filtered = computed(() => {
     const s = this.statusFilter();
@@ -83,7 +84,7 @@ export class IndentsComponent implements OnInit, OnDestroy {
       case 'Draft': return '';
       case 'Submitted': case 'Approved': case 'Issued': return 'warn';
       case 'Received': case 'Closed': return 'ok';
-      case 'Rejected': return 'bad';
+      case 'Rejected': case 'Cancelled': return 'bad';
       default: return '';
     }
   }
@@ -164,6 +165,23 @@ export class IndentsComponent implements OnInit, OnDestroy {
     this.reviewId.set(i.id);
     this.reviewMode.set('receive');
     this.error.set(null); this.notice.set(null);
+  }
+
+  beginReject(i: Indent): void {
+    this.rejectReason.set('');
+    this.reviewId.set(i.id);
+    this.reviewMode.set('reject');
+    this.error.set(null); this.notice.set(null);
+  }
+
+  confirmReject(i: Indent): void {
+    const reason = this.rejectReason().trim();
+    if (!reason) { this.error.set('A rejection reason is required.'); return; }
+    this.act(i, () => this.api.rejectIndent(i.id, reason), 'rejected');
+  }
+
+  cancelDraft(i: Indent): void {
+    this.act(i, () => this.api.cancelIndent(i.id), 'cancelled');
   }
 
   confirmReceive(i: Indent): void {

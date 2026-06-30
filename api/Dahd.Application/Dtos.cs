@@ -50,8 +50,11 @@ public record IndentDto(
     Guid RaisedByWarehouseId, string RaisedByWarehouseName,
     Guid FulfilledByWarehouseId, string FulfilledByWarehouseName,
     IndentStatus Status, DateTime? SubmittedAt, DateTime? ApprovedAt,
-    DateTime? IssuedAt, DateTime? ReceivedAt, string? Remarks,
-    IReadOnlyList<IndentLineDto> Lines);
+    DateTime? IssuedAt, DateTime? ReceivedAt,
+    DateTime? RejectedAt, DateTime? CancelledAt, string? RejectionReason,
+    string? Remarks, IReadOnlyList<IndentLineDto> Lines);
+
+public record RejectIndentRequest(string Reason);
 
 public record CreateIndentLineRequest(Guid DrugId, decimal RequestedQuantity, string? Remarks);
 public record CreateIndentRequest(

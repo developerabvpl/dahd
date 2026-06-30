@@ -108,6 +108,12 @@
       </table>
 
       @if (i.remarks) { <small style="color:#6b7d90">📝 {{ i.remarks }}</small> }
+      @if (i.status === 'Rejected' && i.rejectionReason) {
+        <div style="margin-top:0.4rem"><small style="color:#b91c1c">✕ Rejected: {{ i.rejectionReason }}</small></div>
+      }
+      @if (i.status === 'Cancelled') {
+        <div style="margin-top:0.4rem"><small style="color:#6b7d90">Cancelled {{ i.cancelledAt | date:'short' }}</small></div>
+      }
 
       <!-- ===== APPROVE review panel ===== -->
       @if (isReviewing(i, 'approve')) {
@@ -159,6 +165,18 @@
         </div>
       }
 
+      <!-- ===== REJECT review panel ===== -->
+      @if (isReviewing(i, 'reject')) {
+        <div style="margin-top:0.7rem; padding:0.7rem; background:#fef2f2; border:1px solid #fca5a5; border-radius:6px">
+          <strong>Reject indent</strong> — the reason is sent back to the raising store and recorded in the audit log.
+          <div class="action-row" style="margin-top:0.4rem">
+            <input type="text" placeholder="Reason for rejection..." [ngModel]="rejectReason()" (ngModelChange)="rejectReason.set($event)" name="rejReason" style="flex:1; min-width:240px" />
+            <button class="primary" (click)="confirmReject(i)" [disabled]="busyId() === i.id">Confirm reject</button>
+            <button (click)="cancelReview()">Cancel</button>
+          </div>
+        </div>
+      }
+
       <!-- ===== RECEIVE review panel ===== -->
       @if (isReviewing(i, 'receive')) {
         <div style="margin-top:0.7rem; padding:0.7rem; background:#ecfdf5; border:1px solid #6ee7b7; border-radius:6px">
@@ -183,9 +201,11 @@
         <div class="action-row" style="margin-top:0.6rem">
           @if (i.status === 'Draft' && canSubmit()) {
             <button class="primary" (click)="submit(i)" [disabled]="busyId() === i.id">Submit</button>
+            <button (click)="cancelDraft(i)" [disabled]="busyId() === i.id">Cancel draft</button>
           }
           @if (i.status === 'Submitted' && canApprove()) {
             <button class="primary" (click)="beginApprove(i)">Review &amp; approve</button>
+            <button (click)="beginReject(i)">Reject</button>
           }
           @if (i.status === 'Submitted' && !canApprove()) {
             <small style="color:#6b7d90">🔒 Awaiting approval by CVO / Director.</small>

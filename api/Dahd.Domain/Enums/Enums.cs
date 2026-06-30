@@ -36,7 +36,8 @@ public enum IndentStatus
     Issued = 4,
     Received = 5,
     Closed = 6,
-    Rejected = 7
+    Rejected = 7,
+    Cancelled = 8
 }
 
 public enum FormularyClass

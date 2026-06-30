@@ -89,6 +89,49 @@ public class IndentsController(DahdDbContext db, IAuditLogger audit) : Controlle
         return Ok(await Reload(id, ct));
     }
 
+    [HttpPost("{id:guid}/cancel")]
+    [Authorize(Roles = AppRoles.IssueOrReceive)]
+    public async Task<ActionResult<IndentDto>> Cancel(Guid id, CancellationToken ct)
+    {
+        var indent = await Load(id, ct);
+        if (indent is null) return NotFound();
+        if (indent.Status != IndentStatus.Draft)
+            return Conflict($"Only a Draft indent can be cancelled (status is '{indent.Status}').");
+
+        indent.Status = IndentStatus.Cancelled;
+        indent.CancelledAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+
+        await audit.LogAsync(nameof(Indent), id, "Transition:Draft->Cancelled",
+            summary: $"Indent {indent.IndentNumber} cancelled", ct: ct);
+        return Ok(await Reload(id, ct));
+    }
+
+    [HttpPost("{id:guid}/reject")]
+    [Authorize(Roles = AppRoles.ApproveIndents)]
+    public async Task<ActionResult<IndentDto>> Reject(
+        Guid id,
+        [FromBody] RejectIndentRequest req,
+        CancellationToken ct)
+    {
+        var indent = await Load(id, ct);
+        if (indent is null) return NotFound();
+        if (indent.Status != IndentStatus.Submitted)
+            return Conflict($"Only a Submitted indent can be rejected (status is '{indent.Status}').");
+        if (string.IsNullOrWhiteSpace(req.Reason))
+            return BadRequest("A rejection reason is required.");
+
+        indent.Status = IndentStatus.Rejected;
+        indent.RejectedAt = DateTime.UtcNow;
+        indent.RejectionReason = req.Reason.Trim();
+        await db.SaveChangesAsync(ct);
+
+        await audit.LogAsync(nameof(Indent), id, "Transition:Submitted->Rejected",
+            after: new { indent.RejectionReason },
+            summary: $"Indent {indent.IndentNumber} rejected: {indent.RejectionReason}", ct: ct);
+        return Ok(await Reload(id, ct));
+    }
+
     [HttpPost("{id:guid}/approve")]
     [Authorize(Roles = AppRoles.ApproveIndents)]
     public async Task<ActionResult<IndentDto>> Approve(
@@ -233,7 +276,8 @@ public class IndentsController(DahdDbContext db, IAuditLogger audit) : Controlle
         i.Id, i.IndentNumber,
         i.RaisedByWarehouseId, i.RaisedByWarehouse.Name,
         i.FulfilledByWarehouseId, i.FulfilledByWarehouse.Name,
-        i.Status, i.SubmittedAt, i.ApprovedAt, i.IssuedAt, i.ReceivedAt, i.Remarks,
+        i.Status, i.SubmittedAt, i.ApprovedAt, i.IssuedAt, i.ReceivedAt,
+        i.RejectedAt, i.CancelledAt, i.RejectionReason, i.Remarks,
         i.Lines.Select(l => new IndentLineDto(
             l.Id, l.DrugId, l.Drug.Code, l.Drug.Name,
             l.RequestedQuantity, l.ApprovedQuantity, l.IssuedQuantity,

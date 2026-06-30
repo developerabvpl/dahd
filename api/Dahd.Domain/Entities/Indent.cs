@@ -15,6 +15,9 @@ public class Indent : Entity
     public DateTime? ApprovedAt { get; set; }
     public DateTime? IssuedAt { get; set; }
     public DateTime? ReceivedAt { get; set; }
+    public DateTime? RejectedAt { get; set; }
+    public DateTime? CancelledAt { get; set; }
+    public string? RejectionReason { get; set; }
     public string? Remarks { get; set; }
     public List<IndentLine> Lines { get; set; } = new();
 }
