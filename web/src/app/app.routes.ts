@@ -23,6 +23,7 @@ export const routes: Routes = [
       { path: 'facilities',  loadComponent: () => import('./features/facilities/facilities.component').then(m => m.FacilitiesComponent) },
       { path: 'batches',     loadComponent: () => import('./features/batches/batches.component').then(m => m.BatchesComponent) },
       { path: 'stock',       loadComponent: () => import('./features/stock/stock.component').then(m => m.StockComponent) },
+      { path: 'par-levels',  loadComponent: () => import('./features/par-levels/par-levels.component').then(m => m.ParLevelsComponent) },
       { path: 'assets',      loadComponent: () => import('./features/assets/assets.component').then(m => m.AssetsComponent) },
       { path: 'maintenance', loadComponent: () => import('./features/maintenance/maintenance.component').then(m => m.MaintenanceComponent) },
       { path: 'indents',     loadComponent: () => import('./features/indents/indents.component').then(m => m.IndentsComponent) },

@@ -1,0 +1,97 @@
+<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap">
+  <div>
+    <h2>Par Levels</h2>
+    <p style="color:#6b7d90; margin:0 0 1rem">Minimum stock each warehouse should hold per drug. Items below par can be auto-indented back up to the reorder target (D11 par-level management).</p>
+  </div>
+  @if (canManage()) {
+    <button class="primary" (click)="toggleAdd()">{{ showAdd() ? 'Close' : '+ Set par level' }}</button>
+  }
+</div>
+
+@if (notice()) { <div class="card" style="color:#065f46">{{ notice() }}</div> }
+@if (error())  { <div class="card" style="color:#b91c1c">{{ error() }}</div> }
+
+@if (showAdd()) {
+  <div class="card">
+    <h3 style="margin-top:0">Set / update par level</h3>
+    <div class="action-row">
+      <label>Warehouse
+        <select [(ngModel)]="addForm.warehouseId" name="wh">
+          <option value="" disabled>— select —</option>
+          @for (w of warehouses(); track w.id) { <option [value]="w.id">{{ w.code }} — {{ w.name }}</option> }
+        </select>
+      </label>
+      <label>Drug
+        <select [(ngModel)]="addForm.drugId" name="drug">
+          <option value="" disabled>— select —</option>
+          @for (d of drugs(); track d.id) { <option [value]="d.id">{{ d.code }} — {{ d.name }}</option> }
+        </select>
+      </label>
+      <label>Par (min) <input type="number" min="0" step="1" [(ngModel)]="addForm.parQuantity" name="par" style="width:110px" /></label>
+      <label>Reorder to (optional) <input type="number" min="0" step="1" [(ngModel)]="addForm.reorderToQuantity" name="reorder" style="width:120px" /></label>
+      <button class="primary" (click)="save()" [disabled]="busy()">Save</button>
+    </div>
+  </div>
+}
+
+<div class="card" style="display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap">
+  <label>Warehouse
+    <select [ngModel]="warehouseFilter()" (ngModelChange)="warehouseFilter.set($event); reload()" name="whf">
+      <option value="">All</option>
+      @for (w of warehouses(); track w.id) { <option [value]="w.id">{{ w.code }} — {{ w.name }}</option> }
+    </select>
+  </label>
+  <label style="display:flex; align-items:center; gap:0.3rem">
+    <input type="checkbox" [ngModel]="belowParOnly()" (ngModelChange)="belowParOnly.set($event); reload()" name="bpo" /> Below par only
+  </label>
+  <span class="badge {{ belowParCount() > 0 ? 'bad' : 'ok' }}">{{ belowParCount() }} below par</span>
+
+  @if (canIndent() && warehouseFilter()) {
+    <span style="margin-left:auto; display:flex; gap:0.4rem; align-items:center">
+      <label>Source
+        <select [ngModel]="sourceId()" (ngModelChange)="sourceId.set($event)" name="src">
+          <option value="" disabled>— source —</option>
+          @for (w of warehouses(); track w.id) { <option [value]="w.id">{{ w.code }}</option> }
+        </select>
+      </label>
+      <button class="primary" (click)="autoIndent()" [disabled]="busy()">Auto-indent below-par</button>
+    </span>
+  }
+</div>
+
+<div class="card">
+  @if (loading()) {
+    <p>Loading...</p>
+  } @else if (rows().length === 0) {
+    <p>No par levels set @if (canManage()) { — use “+ Set par level” to add one }.</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>Warehouse</th>
+          <th>Drug</th>
+          <th>Par (min)</th>
+          <th>Reorder to</th>
+          <th>Current stock</th>
+          <th>Shortfall</th>
+          <th>State</th>
+          @if (canManage()) { <th></th> }
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of rows(); track r.id) {
+          <tr>
+            <td>{{ r.warehouseCode }}</td>
+            <td><strong>{{ r.drugCode }}</strong> — {{ r.drugName }}</td>
+            <td>{{ r.parQuantity }} {{ r.unitOfMeasure }}</td>
+            <td>{{ r.reorderToQuantity ?? r.parQuantity }}</td>
+            <td>{{ r.currentStock }}</td>
+            <td>@if (r.shortfall > 0) { <span class="badge warn">{{ r.shortfall }}</span> } @else { 0 }</td>
+            <td>@if (r.belowPar) { <span class="badge bad">BELOW PAR</span> } @else { <span class="badge ok">OK</span> }</td>
+            @if (canManage()) { <td><button (click)="remove(r)" [disabled]="busy()">Remove</button></td> }
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

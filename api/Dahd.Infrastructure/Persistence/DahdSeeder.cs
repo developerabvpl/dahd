@@ -64,6 +64,38 @@ public static class DahdSeeder
         {
             await SeedAssetsAsync(db, ct);
         }
+
+        if (!await db.ParLevels.AnyAsync(ct))
+        {
+            await SeedParLevelsAsync(db, ct);
+        }
+    }
+
+    private static async Task SeedParLevelsAsync(DahdDbContext db, CancellationToken ct)
+    {
+        // Par levels at the divisional stores for the core vaccines/drugs, so the
+        // Par Levels page shows a mix of below-par and OK on first run.
+        var divisions = await db.Warehouses.Where(w => w.Type == WarehouseType.Divisional).ToListAsync(ct);
+        var codes = new[] { "FMD-VAX", "BRU-S19", "HS-VAX", "OXY-50", "IVERM", "CAL-INJ" };
+        var drugs = await db.Drugs.Where(d => codes.Contains(d.Code)).ToListAsync(ct);
+        if (divisions.Count == 0 || drugs.Count == 0) return;
+
+        foreach (var wh in divisions.Take(3))
+        {
+            foreach (var d in drugs)
+            {
+                var par = d.IsVaccine ? 5000m : 200m;
+                db.ParLevels.Add(new ParLevel
+                {
+                    WarehouseId = wh.Id,
+                    DrugId = d.Id,
+                    ParQuantity = par,
+                    ReorderToQuantity = par * 2,
+                    IsActive = true
+                });
+            }
+        }
+        await db.SaveChangesAsync(ct);
     }
 
     private static async Task SeedAssetsAsync(DahdDbContext db, CancellationToken ct)

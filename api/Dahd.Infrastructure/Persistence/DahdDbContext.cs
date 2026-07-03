@@ -27,6 +27,7 @@ public class DahdDbContext : DbContext
     public DbSet<MaintenanceSchedule> MaintenanceSchedules => Set<MaintenanceSchedule>();
     public DbSet<MaintenanceJob> MaintenanceJobs => Set<MaintenanceJob>();
     public DbSet<AmcContract> AmcContracts => Set<AmcContract>();
+    public DbSet<ParLevel> ParLevels => Set<ParLevel>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -255,6 +256,15 @@ public class DahdDbContext : DbContext
             e.Property(a => a.AnnualCost).HasPrecision(18, 2);
             e.HasIndex(a => a.ContractNumber).IsUnique();
             e.HasOne(a => a.Asset).WithMany(x => x.AmcContracts).HasForeignKey(a => a.AssetId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ParLevel>(e =>
+        {
+            e.Property(p => p.ParQuantity).HasPrecision(18, 4);
+            e.Property(p => p.ReorderToQuantity).HasPrecision(18, 4);
+            e.HasIndex(p => new { p.WarehouseId, p.DrugId }).IsUnique();
+            e.HasOne(p => p.Warehouse).WithMany().HasForeignKey(p => p.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(p => p.Drug).WithMany().HasForeignKey(p => p.DrugId).OnDelete(DeleteBehavior.Restrict);
         });
 
         base.OnModelCreating(modelBuilder);

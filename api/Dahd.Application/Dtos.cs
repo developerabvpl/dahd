@@ -56,6 +56,19 @@ public record IndentDto(
 
 public record RejectIndentRequest(string Reason);
 
+public record ParLevelRow(
+    Guid Id, Guid WarehouseId, string WarehouseCode, string WarehouseName,
+    Guid DrugId, string DrugCode, string DrugName, string UnitOfMeasure,
+    decimal ParQuantity, decimal? ReorderToQuantity,
+    decimal CurrentStock, decimal Shortfall, bool BelowPar, bool IsActive);
+
+public record UpsertParLevelRequest(
+    Guid WarehouseId, Guid DrugId, decimal ParQuantity, decimal? ReorderToQuantity);
+
+public record ParAutoIndentRequest(Guid RecipientWarehouseId, Guid SourceWarehouseId);
+
+public record ParAutoIndentResponse(Guid? IndentId, string? IndentNumber, int LineCount, decimal TotalQuantity);
+
 public record CreateIndentLineRequest(Guid DrugId, decimal RequestedQuantity, string? Remarks);
 public record CreateIndentRequest(
     Guid RaisedByWarehouseId, Guid FulfilledByWarehouseId,
