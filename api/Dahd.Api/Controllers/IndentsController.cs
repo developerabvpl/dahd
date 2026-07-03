@@ -72,6 +72,39 @@ public class IndentsController(DahdDbContext db, IAuditLogger audit) : Controlle
         return CreatedAtAction(nameof(GetById), new { id = indent.Id }, await Reload(indent.Id, ct));
     }
 
+    [HttpPut("{id:guid}")]
+    [Authorize(Roles = AppRoles.IssueOrReceive)]
+    public async Task<ActionResult<IndentDto>> Update(Guid id, [FromBody] UpdateIndentRequest req, CancellationToken ct)
+    {
+        var indent = await db.Indents.Include(i => i.Lines).FirstOrDefaultAsync(i => i.Id == id, ct);
+        if (indent is null) return NotFound();
+        if (indent.Status != IndentStatus.Draft)
+            return Conflict($"Only a Draft indent can be edited (status is '{indent.Status}').");
+        if (req.Lines is null || req.Lines.Count == 0)
+            return BadRequest("Indent must have at least one line.");
+        if (req.RaisedByWarehouseId == req.FulfilledByWarehouseId)
+            return BadRequest("Raising and source warehouse must differ.");
+
+        indent.RaisedByWarehouseId = req.RaisedByWarehouseId;
+        indent.FulfilledByWarehouseId = req.FulfilledByWarehouseId;
+        indent.Remarks = req.Remarks;
+
+        db.IndentLines.RemoveRange(indent.Lines);
+        indent.Lines = req.Lines.Select(l => new IndentLine
+        {
+            IndentId = indent.Id,
+            DrugId = l.DrugId,
+            RequestedQuantity = l.RequestedQuantity,
+            Remarks = l.Remarks
+        }).ToList();
+
+        await db.SaveChangesAsync(ct);
+        await audit.LogAsync(nameof(Indent), id, "Update",
+            after: new { LineCount = indent.Lines.Count },
+            summary: $"Draft indent {indent.IndentNumber} edited ({indent.Lines.Count} lines)", ct: ct);
+        return Ok(await Reload(id, ct));
+    }
+
     [HttpPost("{id:guid}/submit")]
     [Authorize(Roles = AppRoles.IssueOrReceive)]
     public async Task<ActionResult<IndentDto>> Submit(Guid id, CancellationToken ct)

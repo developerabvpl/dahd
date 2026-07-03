@@ -77,6 +77,10 @@ public record CreateIndentRequest(
 public record LineApproval(Guid LineId, decimal ApprovedQuantity);
 public record ApproveIndentRequest(List<LineApproval>? LineApprovals);
 
+public record UpdateIndentRequest(
+    Guid RaisedByWarehouseId, Guid FulfilledByWarehouseId,
+    string? Remarks, List<CreateIndentLineRequest> Lines);
+
 public record StockByDrugRow(
     Guid DrugId, string DrugCode, string DrugName, string UnitOfMeasure,
     Guid WarehouseId, string WarehouseCode, string WarehouseName,

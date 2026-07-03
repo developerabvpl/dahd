@@ -65,6 +65,10 @@ export class ApiService {
     return this.http.post<Indent>(`${this.base}/indents`, req);
   }
 
+  updateIndent(id: string, req: CreateIndentRequest): Observable<Indent> {
+    return this.http.put<Indent>(`${this.base}/indents/${id}`, req);
+  }
+
   submitIndent(id: string): Observable<Indent> {
     return this.http.post<Indent>(`${this.base}/indents/${id}/submit`, {});
   }

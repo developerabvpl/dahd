@@ -108,6 +108,52 @@
       </table>
 
       @if (i.remarks) { <small style="color:#6b7d90">📝 {{ i.remarks }}</small> }
+      @if (i.status === 'Rejected' && i.rejectionReason) { <div><span class="badge bad">Rejected</span> <small style="color:#b91c1c">{{ i.rejectionReason }}</small></div> }
+
+      <!-- ===== EDIT DRAFT panel ===== -->
+      @if (editId() === i.id) {
+        <div style="margin-top:0.7rem; padding:0.7rem; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px">
+          <strong>Edit draft</strong>
+          <div class="action-row" style="margin-top:0.4rem">
+            <label>Raising (recipient)
+              <select [(ngModel)]="editDraft.raisedByWarehouseId" name="er-{{ i.id }}">
+                <option value="" disabled>— select —</option>
+                @for (w of warehouses(); track w.id) { <option [value]="w.id">{{ w.code }} — {{ w.name }}</option> }
+              </select>
+            </label>
+            <label>Source (fulfils)
+              <select [(ngModel)]="editDraft.fulfilledByWarehouseId" name="ef-{{ i.id }}">
+                <option value="" disabled>— select —</option>
+                @for (w of warehouses(); track w.id) { <option [value]="w.id">{{ w.code }} — {{ w.name }}</option> }
+              </select>
+            </label>
+          </div>
+          <table style="margin-top:0.4rem">
+            <thead><tr><th>Drug</th><th>Qty</th><th>Remarks</th><th></th></tr></thead>
+            <tbody>
+              @for (l of editDraft.lines; track $index) {
+                <tr>
+                  <td>
+                    <select [(ngModel)]="l.drugId" name="ed-{{ i.id }}-{{ $index }}">
+                      <option value="" disabled>— select drug —</option>
+                      @for (d of drugs(); track d.id) { <option [value]="d.id">{{ d.code }} — {{ d.name }}</option> }
+                    </select>
+                  </td>
+                  <td><input type="number" min="1" step="1" [(ngModel)]="l.requestedQuantity" name="eq-{{ i.id }}-{{ $index }}" style="width:90px" /></td>
+                  <td><input type="text" [(ngModel)]="l.remarks" name="erm-{{ i.id }}-{{ $index }}" /></td>
+                  <td>@if (editDraft.lines.length > 1) { <button (click)="removeEditLine($index)">✕</button> }</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          <div class="action-row" style="margin-top:0.4rem">
+            <button (click)="addEditLine()">+ Add line</button>
+            <label style="flex:1">Remarks <input type="text" [(ngModel)]="editDraft.remarks" name="erem-{{ i.id }}" /></label>
+            <button class="primary" (click)="saveEdit(i)" [disabled]="busyId() === i.id">Save changes</button>
+            <button (click)="cancelEdit()">Cancel</button>
+          </div>
+        </div>
+      }
       @if (i.status === 'Rejected' && i.rejectionReason) {
         <div style="margin-top:0.4rem"><small style="color:#b91c1c">✕ Rejected: {{ i.rejectionReason }}</small></div>
       }
@@ -196,11 +242,12 @@
         </div>
       }
 
-      <!-- action buttons (only when not already reviewing this indent) -->
-      @if (reviewId() !== i.id) {
+      <!-- action buttons (only when not already reviewing/editing this indent) -->
+      @if (reviewId() !== i.id && editId() !== i.id) {
         <div class="action-row" style="margin-top:0.6rem">
           @if (i.status === 'Draft' && canSubmit()) {
             <button class="primary" (click)="submit(i)" [disabled]="busyId() === i.id">Submit</button>
+            <button (click)="beginEdit(i)">Edit</button>
             <button (click)="cancelDraft(i)" [disabled]="busyId() === i.id">Cancel draft</button>
           }
           @if (i.status === 'Submitted' && canApprove()) {

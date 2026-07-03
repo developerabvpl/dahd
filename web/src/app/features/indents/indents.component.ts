@@ -41,6 +41,10 @@ export class IndentsComponent implements OnInit, OnDestroy {
   readonly showCreate = signal(false);
   draft = this.blankDraft();
 
+  // edit-draft form
+  readonly editId = signal<string | null>(null);
+  editDraft = this.blankDraft();
+
   readonly statuses: IndentStatus[] = ['Draft', 'Submitted', 'Approved', 'Issued', 'Received', 'Rejected', 'Cancelled'];
   readonly rejectReason = signal('');
 
@@ -221,6 +225,46 @@ export class IndentsComponent implements OnInit, OnDestroy {
 
   addLine(): void { this.draft.lines.push({ drugId: '', requestedQuantity: 1 }); }
   removeLine(idx: number): void { this.draft.lines.splice(idx, 1); }
+
+  // ── Edit a draft ──
+
+  beginEdit(i: Indent): void {
+    this.cancelReview();
+    this.editId.set(i.id);
+    this.editDraft = {
+      raisedByWarehouseId: i.raisedByWarehouseId,
+      fulfilledByWarehouseId: i.fulfilledByWarehouseId,
+      remarks: i.remarks ?? '',
+      lines: i.lines.map(l => ({ drugId: l.drugId, requestedQuantity: l.requestedQuantity, remarks: l.remarks }))
+    };
+    if (this.editDraft.lines.length === 0) this.editDraft.lines.push({ drugId: '', requestedQuantity: 1 });
+    this.error.set(null); this.notice.set(null);
+  }
+
+  cancelEdit(): void { this.editId.set(null); }
+  addEditLine(): void { this.editDraft.lines.push({ drugId: '', requestedQuantity: 1 }); }
+  removeEditLine(idx: number): void { this.editDraft.lines.splice(idx, 1); }
+
+  saveEdit(i: Indent): void {
+    const d = this.editDraft;
+    if (!d.raisedByWarehouseId || !d.fulfilledByWarehouseId) { this.error.set('Pick both warehouses.'); return; }
+    if (d.raisedByWarehouseId === d.fulfilledByWarehouseId) { this.error.set('Raising and source warehouse must differ.'); return; }
+    const lines = d.lines.filter(l => l.drugId && l.requestedQuantity > 0);
+    if (lines.length === 0) { this.error.set('Keep at least one line with a drug and quantity.'); return; }
+
+    this.busyId.set(i.id);
+    this.error.set(null); this.notice.set(null);
+    this.api.updateIndent(i.id, {
+      raisedByWarehouseId: d.raisedByWarehouseId,
+      fulfilledByWarehouseId: d.fulfilledByWarehouseId,
+      remarks: d.remarks || undefined,
+      lines
+    }).pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => { this.busyId.set(null); this.notice.set(`Indent ${i.indentNumber} updated.`); this.editId.set(null); this.reload(); },
+        error: e => { this.busyId.set(null); this.error.set(this.msg(e)); }
+      });
+  }
 
   createIndent(): void {
     const d = this.draft;
