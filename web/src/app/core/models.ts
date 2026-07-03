@@ -112,6 +112,25 @@ export interface CreateIndentRequest {
 export interface LineApproval { lineId: string; approvedQuantity: number; }
 export interface ApproveIndentRequest { lineApprovals?: LineApproval[]; }
 
+export type StockMovementType = 'Opening' | 'Receipt' | 'IssueOut' | 'ReceiveIn' | 'Dispense' | 'Adjustment' | 'Wastage';
+
+export interface StockLedgerRow {
+  id: string;
+  occurredAt: string;
+  type: StockMovementType;
+  drugId: string;
+  drugCode: string;
+  drugName: string;
+  warehouseId: string;
+  warehouseCode: string;
+  batchNumber?: string;
+  quantityDelta: number;
+  balanceAfter: number;
+  reference?: string;
+  note?: string;
+  actorUsername?: string;
+}
+
 export interface CreateBatchRequest {
   drugId: string;
   batchNumber: string;

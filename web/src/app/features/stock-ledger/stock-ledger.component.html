@@ -1,0 +1,62 @@
+<h2>Stock Ledger</h2>
+<p style="color:#6b7d90; margin-bottom:1rem">Append-only movement history — every goods receipt (+), indent issue (−), receive (+), and dispense (−). Running balance is cumulated per drug × warehouse from the opening balance, so it reconciles with actual on-hand.</p>
+
+<div class="card" style="display:flex; gap:0.6rem; align-items:flex-end; flex-wrap:wrap">
+  <label>Drug
+    <select [ngModel]="drugId()" (ngModelChange)="drugId.set($event)" name="drug">
+      <option value="">— any —</option>
+      @for (d of drugs(); track d.id) { <option [value]="d.id">{{ d.code }} — {{ d.name }}</option> }
+    </select>
+  </label>
+  <label>Warehouse
+    <select [ngModel]="warehouseId()" (ngModelChange)="warehouseId.set($event)" name="wh">
+      <option value="">— any —</option>
+      @for (w of warehouses(); track w.id) { <option [value]="w.id">{{ w.code }} — {{ w.name }}</option> }
+    </select>
+  </label>
+  <button class="primary" (click)="run()">Show ledger</button>
+  <small style="color:#6b7d90">Pick a drug and/or warehouse (both narrows it to one balance line).</small>
+</div>
+
+@if (error()) { <div class="card" style="color:#b91c1c">{{ error() }}</div> }
+
+<div class="card">
+  @if (loading()) {
+    <p>Loading...</p>
+  } @else if (rows().length === 0) {
+    <p>No movements to show — choose a filter and click “Show ledger”.</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Type</th>
+          <th>Drug</th>
+          <th>Warehouse</th>
+          <th>Batch</th>
+          <th style="text-align:right">Change</th>
+          <th style="text-align:right">Balance</th>
+          <th>Reference</th>
+          <th>By</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of rows(); track r.id) {
+          <tr>
+            <td>{{ r.occurredAt | date:'short' }}</td>
+            <td><span class="badge {{ typeCls(r.type) }}">{{ r.type }}</span></td>
+            <td>{{ r.drugCode }}</td>
+            <td>{{ r.warehouseCode }}</td>
+            <td>{{ r.batchNumber }}</td>
+            <td style="text-align:right; font-weight:600; color:{{ r.quantityDelta < 0 ? '#b91c1c' : '#065f46' }}">
+              {{ r.quantityDelta > 0 ? '+' : '' }}{{ r.quantityDelta }}
+            </td>
+            <td style="text-align:right">{{ r.balanceAfter }}</td>
+            <td>{{ r.reference }} @if (r.note) { <br><small style="color:#6b7d90">{{ r.note }}</small> }</td>
+            <td>{{ r.actorUsername }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

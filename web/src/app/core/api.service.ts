@@ -5,7 +5,8 @@ import { environment } from '../../environments/environment';
 import {
   AcknowledgeBreachRequest, ApproveIndentRequest, Batch, ColdChainLog,
   CreateBatchRequest, CreateIndentRequest, DashboardKpi, DispenseEvent,
-  Drug, Facility, Indent, IndentStatus, LineApproval, StockByDrugRow, Warehouse
+  Drug, Facility, Indent, IndentStatus, LineApproval, StockByDrugRow,
+  StockLedgerRow, Warehouse
 } from './models';
 
 @Injectable({ providedIn: 'root' })
@@ -49,6 +50,15 @@ export class ApiService {
     if (opts?.warehouseId) params['warehouseId'] = opts.warehouseId;
     if (opts?.drugId) params['drugId'] = opts.drugId;
     return this.http.get<StockByDrugRow[]>(`${this.base}/batches/stock-by-drug`, { params });
+  }
+
+  getStockLedger(opts: { drugId?: string; warehouseId?: string; batchId?: string; take?: number }): Observable<StockLedgerRow[]> {
+    const params: Record<string, string> = {};
+    if (opts.drugId) params['drugId'] = opts.drugId;
+    if (opts.warehouseId) params['warehouseId'] = opts.warehouseId;
+    if (opts.batchId) params['batchId'] = opts.batchId;
+    if (opts.take != null) params['take'] = String(opts.take);
+    return this.http.get<StockLedgerRow[]>(`${this.base}/batches/ledger`, { params });
   }
 
   getIndents(status?: IndentStatus): Observable<Indent[]> {

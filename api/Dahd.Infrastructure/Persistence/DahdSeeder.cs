@@ -69,6 +69,32 @@ public static class DahdSeeder
         {
             await SeedParLevelsAsync(db, ct);
         }
+
+        // Stock-ledger opening balances: one Opening row per in-store batch equal
+        // to its current quantity, so running balances reconcile with actual
+        // on-hand from ledger start (batches predate the movement table).
+        if (!await db.StockMovements.AnyAsync(ct))
+        {
+            var inStore = await db.Batches
+                .Where(b => b.Status == BatchStatus.InStore && b.Quantity > 0)
+                .ToListAsync(ct);
+            foreach (var b in inStore)
+            {
+                db.StockMovements.Add(new StockMovement
+                {
+                    OccurredAt = b.CreatedAt,
+                    Type = StockMovementType.Opening,
+                    DrugId = b.DrugId,
+                    WarehouseId = b.CurrentWarehouseId,
+                    BatchId = b.Id,
+                    BatchNumber = b.BatchNumber,
+                    QuantityDelta = b.Quantity,
+                    Note = "Opening balance (ledger start)",
+                    ActorUsername = "system"
+                });
+            }
+            await db.SaveChangesAsync(ct);
+        }
     }
 
     private static async Task SeedParLevelsAsync(DahdDbContext db, CancellationToken ct)

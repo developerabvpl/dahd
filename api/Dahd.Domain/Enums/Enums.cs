@@ -40,6 +40,17 @@ public enum IndentStatus
     Cancelled = 8
 }
 
+public enum StockMovementType
+{
+    Opening = 1,
+    Receipt = 2,
+    IssueOut = 3,
+    ReceiveIn = 4,
+    Dispense = 5,
+    Adjustment = 6,
+    Wastage = 7
+}
+
 public enum FormularyClass
 {
     Antibiotic = 1,

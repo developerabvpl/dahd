@@ -12,7 +12,7 @@ namespace Dahd.Api.Controllers;
 [ApiController]
 [Route("api/batches")]
 [Authorize(Roles = AppRoles.AnyAuthenticated)]
-public class BatchesController(DahdDbContext db, IAuditLogger audit) : ControllerBase
+public class BatchesController(DahdDbContext db, IAuditLogger audit, IStockLedger ledger) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<BatchDto>>> Get(
@@ -75,6 +75,9 @@ public class BatchesController(DahdDbContext db, IAuditLogger audit) : Controlle
             PurchaseOrderRef = req.PurchaseOrderRef
         };
         db.Batches.Add(batch);
+        ledger.Record(StockMovementType.Receipt, batch.DrugId, batch.CurrentWarehouseId,
+            batch.Id, batch.BatchNumber, batch.Quantity,
+            reference: req.PurchaseOrderRef, note: "Goods receipt");
         await db.SaveChangesAsync(ct);
 
         batch.Drug = drug;
@@ -120,6 +123,50 @@ public class BatchesController(DahdDbContext db, IAuditLogger audit) : Controlle
             .ToList();
 
         return Ok(summary);
+    }
+
+    /// <summary>
+    /// Append-only stock ledger. Running balance is cumulated per (drug, warehouse)
+    /// in chronological order across the FULL history, then the requested slice is
+    /// returned newest-first. Requires a drug or warehouse filter to stay bounded.
+    /// </summary>
+    [HttpGet("ledger")]
+    public async Task<ActionResult<IReadOnlyList<StockLedgerRow>>> Ledger(
+        [FromQuery] Guid? drugId,
+        [FromQuery] Guid? warehouseId,
+        [FromQuery] Guid? batchId,
+        [FromQuery] int take = 200,
+        CancellationToken ct = default)
+    {
+        if (drugId is null && warehouseId is null && batchId is null)
+            return BadRequest("Provide at least one of drugId, warehouseId or batchId.");
+
+        var q = db.StockMovements.AsNoTracking()
+            .Include(m => m.Drug).Include(m => m.Warehouse).AsQueryable();
+        if (drugId.HasValue) q = q.Where(m => m.DrugId == drugId);
+        if (warehouseId.HasValue) q = q.Where(m => m.WarehouseId == warehouseId);
+        if (batchId.HasValue) q = q.Where(m => m.BatchId == batchId);
+
+        var all = await q.OrderBy(m => m.OccurredAt).ThenBy(m => m.CreatedAt).ToListAsync(ct);
+
+        // running balance per (drug, warehouse)
+        var running = new Dictionary<(Guid, Guid), decimal>();
+        var rows = new List<StockLedgerRow>(all.Count);
+        foreach (var m in all)
+        {
+            var key = (m.DrugId, m.WarehouseId);
+            var bal = running.GetValueOrDefault(key, 0m) + m.QuantityDelta;
+            running[key] = bal;
+            rows.Add(new StockLedgerRow(
+                m.Id, m.OccurredAt, m.Type,
+                m.DrugId, m.Drug.Code, m.Drug.Name,
+                m.WarehouseId, m.Warehouse.Code,
+                m.BatchNumber, m.QuantityDelta, bal,
+                m.Reference, m.Note, m.ActorUsername));
+        }
+
+        rows.Reverse(); // newest first for display
+        return Ok(rows.Take(Math.Clamp(take, 1, 1000)).ToList());
     }
 
     private static BatchDto ToDto(Batch b, DateOnly today) => new(

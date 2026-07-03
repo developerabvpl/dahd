@@ -12,7 +12,7 @@ namespace Dahd.Api.Controllers;
 [ApiController]
 [Route("api/indents")]
 [Authorize(Roles = AppRoles.AnyAuthenticated)]
-public class IndentsController(DahdDbContext db, IAuditLogger audit) : ControllerBase
+public class IndentsController(DahdDbContext db, IAuditLogger audit, IStockLedger ledger) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<IndentDto>>> Get(
@@ -224,6 +224,9 @@ public class IndentsController(DahdDbContext db, IAuditLogger audit) : Controlle
             fefoBatch.Quantity -= qty;
             line.IssuedBatchId = fefoBatch.Id;
             line.IssuedQuantity = qty;
+            ledger.Record(StockMovementType.IssueOut, line.DrugId, sourceWarehouseId,
+                fefoBatch.Id, fefoBatch.BatchNumber, -qty,
+                reference: indent.IndentNumber, note: $"Issued to {indent.RaisedByWarehouseId}");
         }
 
         indent.Status = IndentStatus.Issued;
@@ -257,13 +260,15 @@ public class IndentsController(DahdDbContext db, IAuditLogger audit) : Controlle
                 && b.BatchNumber == sourceBatch.BatchNumber
                 && b.CurrentWarehouseId == destWarehouseId, ct);
 
+            Guid destBatchId;
             if (existing is not null)
             {
                 existing.Quantity += qty;
+                destBatchId = existing.Id;
             }
             else
             {
-                db.Batches.Add(new Batch
+                var newBatch = new Batch
                 {
                     DrugId = sourceBatch.DrugId,
                     BatchNumber = sourceBatch.BatchNumber,
@@ -276,9 +281,14 @@ public class IndentsController(DahdDbContext db, IAuditLogger audit) : Controlle
                     Status = BatchStatus.InStore,
                     PurchaseOrderRef = sourceBatch.PurchaseOrderRef,
                     Remarks = $"Received from indent {indent.IndentNumber}"
-                });
+                };
+                db.Batches.Add(newBatch);
+                destBatchId = newBatch.Id;
             }
 
+            ledger.Record(StockMovementType.ReceiveIn, line.DrugId, destWarehouseId,
+                destBatchId, sourceBatch.BatchNumber, qty,
+                reference: indent.IndentNumber, note: "Received into store");
             line.ReceivedQuantity = qty;
         }
 

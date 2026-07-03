@@ -28,6 +28,7 @@ public class DahdDbContext : DbContext
     public DbSet<MaintenanceJob> MaintenanceJobs => Set<MaintenanceJob>();
     public DbSet<AmcContract> AmcContracts => Set<AmcContract>();
     public DbSet<ParLevel> ParLevels => Set<ParLevel>();
+    public DbSet<StockMovement> StockMovements => Set<StockMovement>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -265,6 +266,19 @@ public class DahdDbContext : DbContext
             e.HasIndex(p => new { p.WarehouseId, p.DrugId }).IsUnique();
             e.HasOne(p => p.Warehouse).WithMany().HasForeignKey(p => p.WarehouseId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(p => p.Drug).WithMany().HasForeignKey(p => p.DrugId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<StockMovement>(e =>
+        {
+            e.Property(m => m.QuantityDelta).HasPrecision(18, 4);
+            e.Property(m => m.BatchNumber).HasMaxLength(80);
+            e.Property(m => m.Reference).HasMaxLength(120);
+            e.Property(m => m.Note).HasMaxLength(300);
+            e.Property(m => m.ActorUsername).HasMaxLength(80);
+            e.HasIndex(m => new { m.DrugId, m.WarehouseId, m.OccurredAt });
+            e.HasIndex(m => m.BatchId);
+            e.HasOne(m => m.Drug).WithMany().HasForeignKey(m => m.DrugId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(m => m.Warehouse).WithMany().HasForeignKey(m => m.WarehouseId).OnDelete(DeleteBehavior.Restrict);
         });
 
         base.OnModelCreating(modelBuilder);

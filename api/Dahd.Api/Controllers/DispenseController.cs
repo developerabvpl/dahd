@@ -12,7 +12,7 @@ namespace Dahd.Api.Controllers;
 [ApiController]
 [Route("api/dispense")]
 [Authorize(Roles = AppRoles.AnyAuthenticated)]
-public class DispenseController(DahdDbContext db, IAuditLogger audit) : ControllerBase
+public class DispenseController(DahdDbContext db, IAuditLogger audit, IStockLedger ledger) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<DispenseEventDto>>> Get(
@@ -66,6 +66,9 @@ public class DispenseController(DahdDbContext db, IAuditLogger audit) : Controll
             Remarks = req.Remarks
         };
         db.DispenseEvents.Add(ev);
+        ledger.Record(StockMovementType.Dispense, batch.DrugId, batch.CurrentWarehouseId,
+            batch.Id, batch.BatchNumber, -req.Quantity,
+            reference: facility.Code, note: req.AnimalEarTag is null ? "Dispensed" : $"Dispensed · tag {req.AnimalEarTag}");
         await db.SaveChangesAsync(ct);
 
         ev.Batch = batch;

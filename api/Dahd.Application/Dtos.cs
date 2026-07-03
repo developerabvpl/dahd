@@ -87,6 +87,13 @@ public record StockByDrugRow(
     decimal TotalQuantity, int BatchCount,
     int BatchesExpired, int BatchesNearExpiry30Days);
 
+public record StockLedgerRow(
+    Guid Id, DateTime OccurredAt, StockMovementType Type,
+    Guid DrugId, string DrugCode, string DrugName,
+    Guid WarehouseId, string WarehouseCode,
+    string? BatchNumber, decimal QuantityDelta, decimal BalanceAfter,
+    string? Reference, string? Note, string? ActorUsername);
+
 public record ColdChainLogDto(
     Guid Id, Guid WarehouseId, string WarehouseName,
     string DeviceId, string DeviceName, DateTime ReadingAt,

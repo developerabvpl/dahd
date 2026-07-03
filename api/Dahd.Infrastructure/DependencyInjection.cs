@@ -31,6 +31,7 @@ public static class DependencyInjection
         services.AddSingleton<ITokenService, JwtTokenService>();
         services.AddScoped<ICurrentUser, HttpContextCurrentUser>();
         services.AddScoped<IAuditLogger, EfAuditLogger>();
+        services.AddScoped<IStockLedger, StockLedger>();
 
         return services;
     }
