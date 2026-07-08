@@ -83,10 +83,26 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-using (var scope = app.Services.CreateScope())
+// Migrate + seed with a short retry loop: a sleeping LocalDB can drop the very
+// first connection during startup migration (before the app is listening), which
+// would otherwise kill the whole process. Give it a few attempts to wake up.
 {
-    var db = scope.ServiceProvider.GetRequiredService<DahdDbContext>();
-    await DahdSeeder.SeedAsync(scope.ServiceProvider);
+    var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+    const int maxAttempts = 5;
+    for (var attempt = 1; ; attempt++)
+    {
+        try
+        {
+            using var scope = app.Services.CreateScope();
+            await DahdSeeder.SeedAsync(scope.ServiceProvider);
+            break;
+        }
+        catch (Exception ex) when (attempt < maxAttempts)
+        {
+            logger.LogWarning(ex, "Startup migrate/seed attempt {Attempt}/{Max} failed (DB may be waking); retrying...", attempt, maxAttempts);
+            await Task.Delay(TimeSpan.FromSeconds(3));
+        }
+    }
 }
 
 app.Run();
