@@ -1,8 +1,40 @@
-<h2>Cold Chain</h2>
-<p style="color:#6b7d90; margin-bottom:1rem">Vaccine cold-chain monitoring at 2–8 °C. Breaches require a corrective action acknowledgement. (IoT ingest is Phase 2.4 — readings POSTed manually for now.)</p>
+<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap">
+  <div>
+    <h2>Cold Chain</h2>
+    <p style="color:#6b7d90; margin:0 0 1rem">Vaccine cold-chain monitoring at 2–8 °C. Record device readings here; out-of-range readings are flagged as breaches and require a corrective-action acknowledgement.</p>
+  </div>
+  @if (canRecord()) {
+    <button class="primary" (click)="toggleRecord()">{{ showRecord() ? 'Close' : '+ Record reading' }}</button>
+  }
+</div>
 
+@if (notice()) { <div class="card" style="color:#065f46">{{ notice() }}</div> }
 @if (error()) {
   <div class="card" style="color:#b91c1c">{{ error() }}</div>
+}
+
+@if (showRecord()) {
+  <div class="card">
+    <h3 style="margin-top:0">Record a temperature reading</h3>
+    <form class="grid" (ngSubmit)="record()">
+      <label>
+        <span>Warehouse (cold-chain capable) *</span>
+        <select [(ngModel)]="reading.warehouseId" name="ccwh" required>
+          <option value="" disabled>— select —</option>
+          @for (w of warehouses(); track w.id) { <option [value]="w.id">{{ w.code }} — {{ w.name }}</option> }
+        </select>
+      </label>
+      <label><span>Device id *</span><input type="text" [(ngModel)]="reading.deviceId" name="ccdev" placeholder="ILR-01" required /></label>
+      <label><span>Device name</span><input type="text" [(ngModel)]="reading.deviceName" name="ccname" placeholder="Vaccine ILR" /></label>
+      <label><span>Reading time *</span><input type="datetime-local" [(ngModel)]="reading.readingAt" name="ccat" required /></label>
+      <label><span>Temperature (°C) *</span><input type="number" step="0.1" [(ngModel)]="reading.temperatureCelsius" name="cctemp" required /></label>
+      <label><span>Remarks</span><input type="text" [(ngModel)]="reading.remarks" name="ccrem" /></label>
+      <div class="actions">
+        <button type="submit" class="primary" [disabled]="saving()">{{ saving() ? 'Saving...' : 'Record reading' }}</button>
+      </div>
+    </form>
+    <small style="color:#6b7d90">Below 2 °C or above 8 °C is auto-flagged as a breach and appears in the table for acknowledgement.</small>
+  </div>
 }
 
 <div class="card">

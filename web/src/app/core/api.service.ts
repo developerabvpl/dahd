@@ -4,9 +4,9 @@ import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
   AcknowledgeBreachRequest, ApproveIndentRequest, Batch, ColdChainLog,
-  CreateBatchRequest, CreateIndentRequest, DashboardKpi, DispenseEvent,
-  Drug, Facility, Indent, IndentStatus, LineApproval, StockByDrugRow,
-  StockLedgerRow, Warehouse
+  CreateBatchRequest, CreateColdChainLogRequest, CreateIndentRequest,
+  DashboardKpi, DispenseEvent, Drug, Facility, Indent, IndentStatus,
+  LineApproval, StockByDrugRow, StockLedgerRow, Warehouse
 } from './models';
 
 @Injectable({ providedIn: 'root' })
@@ -119,6 +119,10 @@ export class ApiService {
 
   acknowledgeBreach(id: string, req: AcknowledgeBreachRequest): Observable<ColdChainLog> {
     return this.http.post<ColdChainLog>(`${this.base}/coldchain/logs/${id}/acknowledge`, req);
+  }
+
+  createColdChainLog(req: CreateColdChainLogRequest): Observable<ColdChainLog> {
+    return this.http.post<ColdChainLog>(`${this.base}/coldchain/logs`, req);
   }
 
   getDispenseEvents(opts?: { facilityId?: string; days?: number }): Observable<DispenseEvent[]> {

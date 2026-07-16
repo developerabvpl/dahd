@@ -4,7 +4,8 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   Asset, AssetCategory, AssetJob, AssetKpi, AssetStatus,
-  CompleteJobRequest, CreateScheduleRequest, LogBreakdownRequest,
+  CompleteJobRequest, CreateAmcRequest, CreateAssetRequest,
+  CreateScheduleRequest, LogBreakdownRequest,
   MaintenanceDueRow, MaintenanceJobStatus
 } from './assets.models';
 
@@ -26,6 +27,14 @@ export class AssetsService {
 
   kpis(): Observable<AssetKpi> {
     return this.http.get<AssetKpi>(`${this.base}/assets/kpis`);
+  }
+
+  create(req: CreateAssetRequest): Observable<Asset> {
+    return this.http.post<Asset>(`${this.base}/assets`, req);
+  }
+
+  addAmc(id: string, req: CreateAmcRequest): Observable<Asset> {
+    return this.http.post<Asset>(`${this.base}/assets/${id}/amc`, req);
   }
 
   updateStatus(id: string, status: AssetStatus, condition?: string, notes?: string): Observable<Asset> {

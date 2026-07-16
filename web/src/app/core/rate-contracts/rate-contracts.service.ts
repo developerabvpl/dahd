@@ -2,7 +2,10 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { CheapestRateRow, RateContract, RateContractCategory, RateContractStatus } from './rate-contracts.models';
+import {
+  AddRateContractItemRequest, CheapestRateRow, CreateRateContractRequest,
+  RateContract, RateContractCategory, RateContractItem, RateContractStatus
+} from './rate-contracts.models';
 
 @Injectable({ providedIn: 'root' })
 export class RateContractsService {
@@ -24,5 +27,13 @@ export class RateContractsService {
     const params: Record<string, string> = {};
     if (drugId) params['drugId'] = drugId;
     return this.http.get<CheapestRateRow[]>(`${this.base}/cheapest`, { params });
+  }
+
+  create(req: CreateRateContractRequest): Observable<RateContract> {
+    return this.http.post<RateContract>(this.base, req);
+  }
+
+  addItem(contractId: string, req: AddRateContractItemRequest): Observable<RateContractItem> {
+    return this.http.post<RateContractItem>(`${this.base}/${contractId}/items`, req);
   }
 }

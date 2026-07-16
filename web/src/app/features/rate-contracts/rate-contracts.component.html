@@ -1,5 +1,39 @@
-<h2>Rate Contracts</h2>
-<p style="color:#6b7d90; margin-bottom:1rem">Imported from <code>animalhusb.upsdc.gov.in/en/approved-rate-list</code>: the Veterinary Medicines / Vitamins / Hormones / Minerals RC, the ASCAD Vaccines RC, and the Veterinary Equipments RC. Drives indent approval — surfaces the cheapest rate-contracted vendor per drug.</p>
+<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap">
+  <div>
+    <h2>Rate Contracts</h2>
+    <p style="color:#6b7d90; margin:0 0 1rem">Modelled on <code>animalhusb.upsdc.gov.in/en/approved-rate-list</code>: the Veterinary Medicines / Vitamins / Hormones / Minerals RC, the ASCAD Vaccines RC, and the Veterinary Equipments RC. Drives indent approval — surfaces the cheapest rate-contracted vendor per drug.</p>
+  </div>
+  @if (canManage()) {
+    <button class="primary" (click)="toggleCreate()">{{ showCreate() ? 'Close' : '+ New contract' }}</button>
+  }
+</div>
+
+@if (notice()) { <div class="card" style="color:#065f46">{{ notice() }}</div> }
+@if (error())  { <div class="card" style="color:#b91c1c">{{ error() }}</div> }
+
+@if (showCreate()) {
+  <div class="card">
+    <h3 style="margin-top:0">New rate contract</h3>
+    <form class="grid" (ngSubmit)="createContract()">
+      <label><span>Contract number *</span><input type="text" [(ngModel)]="draft.contractNumber" name="rcnum" placeholder="AHD-MED-2027" required /></label>
+      <label class="wide"><span>Title *</span><input type="text" [(ngModel)]="draft.title" name="rctitle" required /></label>
+      <label>
+        <span>Category *</span>
+        <select [(ngModel)]="draft.category" name="rccat" required>
+          @for (c of categories; track c) { <option [value]="c">{{ c }}</option> }
+        </select>
+      </label>
+      <label><span>Lead body</span><input type="text" [(ngModel)]="draft.leadBody" name="rclead" placeholder="AHD / UPLDB / PCDF" /></label>
+      <label><span>Valid from *</span><input type="date" [(ngModel)]="draft.validFrom" name="rcfrom" required /></label>
+      <label><span>Valid until *</span><input type="date" [(ngModel)]="draft.validUntil" name="rcto" required /></label>
+      <label class="wide"><span>Source URL</span><input type="url" [(ngModel)]="draft.sourceUrl" name="rcurl" placeholder="https://animalhusb.upsdc.gov.in/en/approved-rate-list" /></label>
+      <label class="wide"><span>Notes</span><input type="text" [(ngModel)]="draft.notes" name="rcnotes" /></label>
+      <div class="actions">
+        <button type="submit" class="primary" [disabled]="busy()">{{ busy() ? 'Saving...' : 'Create contract' }}</button>
+      </div>
+    </form>
+  </div>
+}
 
 <div class="card" style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap">
   <strong>Category:</strong>
@@ -100,6 +134,30 @@
               }
             </tbody>
           </table>
+        }
+
+        @if (canManage() && (r.status === 'Active' || r.status === 'Draft')) {
+          @if (addItemId() !== r.id) {
+            <div class="action-row" style="margin-top:0.5rem">
+              <button (click)="openAddItem(r)">+ Add line item</button>
+            </div>
+          } @else {
+            <div style="margin-top:0.6rem; padding:0.7rem; background:#fffbeb; border:1px solid #fcd34d; border-radius:6px">
+              <strong>New line item on {{ r.contractNumber }}</strong>
+              <div class="action-row" style="margin-top:0.4rem">
+                <select [(ngModel)]="itemDraft.drugId" name="li-drug-{{ r.id }}" style="min-width:220px">
+                  <option value="" disabled>— drug —</option>
+                  @for (d of drugs(); track d.id) { <option [value]="d.id">{{ d.code }} — {{ d.name }}</option> }
+                </select>
+                <input type="text" placeholder="Vendor name" [(ngModel)]="itemDraft.vendorName" name="li-ven-{{ r.id }}" style="min-width:170px" />
+                <label>₹/unit <input type="number" min="0.01" step="0.01" [(ngModel)]="itemDraft.unitRate" name="li-rate-{{ r.id }}" style="width:100px" /></label>
+                <input type="text" placeholder="Pack size" [(ngModel)]="itemDraft.packSize" name="li-pack-{{ r.id }}" style="width:110px" />
+                <label>MOQ <input type="number" min="0" [(ngModel)]="itemDraft.minOrderQuantity" name="li-moq-{{ r.id }}" style="width:90px" /></label>
+                <button class="primary" (click)="saveItem(r)" [disabled]="busy()">Save item</button>
+                <button (click)="closeAddItem()">Cancel</button>
+              </div>
+            </div>
+          }
         }
       </details>
     }

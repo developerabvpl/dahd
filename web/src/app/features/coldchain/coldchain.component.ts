@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, forkJoin, takeUntil } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { ColdChainLog } from '../../core/models';
+import { ColdChainLog, CreateColdChainLogRequest, Warehouse } from '../../core/models';
 
 @Component({
   selector: 'app-coldchain',
@@ -18,20 +18,71 @@ export class ColdchainComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
 
   readonly logs = signal<ColdChainLog[]>([]);
+  readonly warehouses = signal<Warehouse[]>([]);
   readonly loading = signal(true);
   readonly ackingId = signal<string | null>(null);
   readonly ackInput = signal<Record<string, string>>({});
   readonly error = signal<string | null>(null);
+  readonly notice = signal<string | null>(null);
+  readonly saving = signal(false);
+
+  // record-reading form
+  readonly showRecord = signal(false);
+  reading: CreateColdChainLogRequest = this.blankReading();
+
+  readonly canRecord = () => this.auth.hasRole('Admin', 'Director', 'Cvo', 'WarehouseIncharge');
 
   ngOnInit(): void { this.load(); }
 
   load(): void {
     this.loading.set(true);
-    this.api.getColdChainLogs({ hours: 168 })
+    forkJoin({
+      logs: this.api.getColdChainLogs({ hours: 168 }),
+      warehouses: this.api.getWarehouses()
+    }).pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: ({ logs, warehouses }) => {
+          this.logs.set(logs);
+          this.warehouses.set(warehouses.filter(w => w.coldChainCapable));
+          this.loading.set(false);
+        },
+        error: () => this.loading.set(false)
+      });
+  }
+
+  blankReading(): CreateColdChainLogRequest {
+    return {
+      warehouseId: '', deviceId: '', deviceName: '',
+      readingAt: new Date().toISOString().slice(0, 16),
+      temperatureCelsius: 5, remarks: ''
+    };
+  }
+
+  toggleRecord(): void {
+    this.showRecord.update(v => !v);
+    if (this.showRecord()) { this.reading = this.blankReading(); this.error.set(null); this.notice.set(null); }
+  }
+
+  record(): void {
+    const r = this.reading;
+    if (!r.warehouseId || !r.deviceId) { this.error.set('Warehouse and device id are required.'); return; }
+    this.saving.set(true);
+    this.error.set(null); this.notice.set(null);
+    this.api.createColdChainLog({ ...r, readingAt: new Date(r.readingAt).toISOString() })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: l => { this.logs.set(l); this.loading.set(false); },
-        error: () => this.loading.set(false)
+        next: log => {
+          this.saving.set(false);
+          this.notice.set(log.isBreach
+            ? `Reading recorded — ${log.temperatureCelsius} °C is a BREACH; acknowledge it below.`
+            : `Reading recorded (${log.temperatureCelsius} °C, in range).`);
+          this.showRecord.set(false);
+          this.load();
+        },
+        error: e => {
+          this.saving.set(false);
+          this.error.set(e?.error?.title ?? (typeof e?.error === 'string' ? e.error : null) ?? e?.message ?? 'Failed');
+        }
       });
   }
 

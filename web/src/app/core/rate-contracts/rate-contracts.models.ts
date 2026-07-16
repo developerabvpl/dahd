@@ -34,6 +34,27 @@ export interface RateContract {
   items: RateContractItem[];
 }
 
+export interface CreateRateContractRequest {
+  contractNumber: string;
+  title: string;
+  category: RateContractCategory;
+  leadBody: string;
+  validFrom: string;
+  validUntil: string;
+  sourceUrl?: string;
+  notes?: string;
+}
+
+export interface AddRateContractItemRequest {
+  drugId: string;
+  vendorId?: string;
+  vendorName?: string;
+  unitRate: number;
+  packSize?: string;
+  minOrderQuantity?: number;
+  remarks?: string;
+}
+
 export interface CheapestRateRow {
   drugId: string;
   drugCode: string;

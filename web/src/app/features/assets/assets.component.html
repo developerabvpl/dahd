@@ -1,5 +1,61 @@
-<h2>Asset Register</h2>
-<p style="color:#6b7d90; margin-bottom:1rem">Equipment register — cold-chain units, diagnostics, lab, AI kits, vehicles, IT. Maps to the D11 Physical Resource Registry: serial, location, purchase, warranty, PPM, AMC. Log a breakdown here; action it on the Maintenance page.</p>
+<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap">
+  <div>
+    <h2>Asset Register</h2>
+    <p style="color:#6b7d90; margin:0 0 1rem">Equipment register — cold-chain units, diagnostics, lab, AI kits, vehicles, IT. Maps to the D11 Physical Resource Registry: serial, location, purchase, warranty, PPM, AMC. Log a breakdown here; action it on the Maintenance page.</p>
+  </div>
+  @if (canManage()) {
+    <button class="primary" (click)="toggleCreate()">{{ showCreate() ? 'Close' : '+ Add asset' }}</button>
+  }
+</div>
+
+@if (showCreate()) {
+  <div class="card">
+    <h3 style="margin-top:0">Register a new asset</h3>
+    <form class="grid" (ngSubmit)="createAsset()">
+      <label><span>Asset tag *</span><input type="text" [(ngModel)]="draft.assetTag" name="tag" placeholder="AST-ILR-013" required /></label>
+      <label><span>Name *</span><input type="text" [(ngModel)]="draft.name" name="name" required /></label>
+      <label>
+        <span>Category *</span>
+        <select [(ngModel)]="draft.category" name="cat" required>
+          @for (c of categories; track c) { <option [value]="c">{{ c }}</option> }
+        </select>
+      </label>
+      <label><span>Model</span><input type="text" [(ngModel)]="draft.model" name="model" /></label>
+      <label><span>Serial number</span><input type="text" [(ngModel)]="draft.serialNumber" name="serial" /></label>
+      <label><span>Manufacturer</span><input type="text" [(ngModel)]="draft.manufacturer" name="mfr" /></label>
+      <label>
+        <span>Warehouse (location)</span>
+        <select [(ngModel)]="draft.warehouseId" name="wh">
+          <option [ngValue]="undefined">—</option>
+          @for (w of warehouses(); track w.id) { <option [value]="w.id">{{ w.code }} — {{ w.name }}</option> }
+        </select>
+      </label>
+      <label>
+        <span>or Facility (location)</span>
+        <select [(ngModel)]="draft.facilityId" name="fac">
+          <option [ngValue]="undefined">—</option>
+          @for (f of facilities(); track f.id) { <option [value]="f.id">{{ f.code }} — {{ f.name }}</option> }
+        </select>
+      </label>
+      <label><span>Location note</span><input type="text" [(ngModel)]="draft.locationNote" name="locnote" /></label>
+      <label><span>Purchase date</span><input type="date" [(ngModel)]="draft.purchaseDate" name="pdate" /></label>
+      <label><span>Purchase cost (₹)</span><input type="number" min="0" step="0.01" [(ngModel)]="draft.purchaseCost" name="pcost" /></label>
+      <label><span>Warranty until</span><input type="date" [(ngModel)]="draft.warrantyUntil" name="warranty" /></label>
+      <label>
+        <span>Condition</span>
+        <select [(ngModel)]="draft.condition" name="cond">
+          <option value="New">New</option><option value="Good">Good</option>
+          <option value="Fair">Fair</option><option value="Poor">Poor</option>
+        </select>
+      </label>
+      <div class="actions">
+        <button type="submit" class="primary" [disabled]="busyId() === 'create'">
+          {{ busyId() === 'create' ? 'Saving...' : 'Register asset' }}
+        </button>
+      </div>
+    </form>
+  </div>
+}
 
 @if (kpi(); as k) {
   <div class="kpi-grid" style="margin-bottom:1rem">
@@ -117,8 +173,43 @@
           <div class="action-row">
             <input type="text" placeholder="Describe a breakdown..." [ngModel]="breakdownInput()[a.id] || ''" (ngModelChange)="setBreakdown(a.id, $event)" name="brk-{{ a.id }}" />
             <button (click)="logBreakdown(a)" [disabled]="busyId() === a.id">Log breakdown</button>
-            <button (click)="condemn(a)" [disabled]="busyId() === a.id">Condemn</button>
+            @if (canSchedule()) {
+              <button (click)="openInline(a, 'schedule')">+ PPM schedule</button>
+            }
+            @if (canManage()) {
+              <button (click)="openInline(a, 'amc')">+ AMC</button>
+              <button (click)="condemn(a)" [disabled]="busyId() === a.id">Condemn</button>
+            }
           </div>
+
+          @if (isInline(a, 'schedule')) {
+            <div style="margin-top:0.6rem; padding:0.7rem; background:#fffbeb; border:1px solid #fcd34d; border-radius:6px">
+              <strong>New PPM schedule for {{ a.assetTag }}</strong>
+              <div class="action-row" style="margin-top:0.4rem">
+                <input type="text" placeholder="Task (e.g. Quarterly calibration)" [(ngModel)]="scheduleDraft.taskDescription" name="st-{{ a.id }}" style="min-width:260px" />
+                <label>Every (days) <input type="number" min="1" [(ngModel)]="scheduleDraft.frequencyDays" name="sf-{{ a.id }}" style="width:90px" /></label>
+                <label>Last serviced <input type="date" [(ngModel)]="scheduleDraft.lastServiceDate" name="sl-{{ a.id }}" /></label>
+                <button class="primary" (click)="saveSchedule(a)" [disabled]="busyId() === a.id">Save schedule</button>
+                <button (click)="closeInline()">Cancel</button>
+              </div>
+            </div>
+          }
+
+          @if (isInline(a, 'amc')) {
+            <div style="margin-top:0.6rem; padding:0.7rem; background:#eff6ff; border:1px solid #93c5fd; border-radius:6px">
+              <strong>New AMC for {{ a.assetTag }}</strong>
+              <div class="action-row" style="margin-top:0.4rem">
+                <input type="text" placeholder="Contract no." [(ngModel)]="amcDraft.contractNumber" name="an-{{ a.id }}" style="width:150px" />
+                <input type="text" placeholder="Vendor" [(ngModel)]="amcDraft.vendorName" name="av-{{ a.id }}" style="min-width:180px" />
+                <label>From <input type="date" [(ngModel)]="amcDraft.startDate" name="as-{{ a.id }}" /></label>
+                <label>To <input type="date" [(ngModel)]="amcDraft.endDate" name="ae-{{ a.id }}" /></label>
+                <label>Annual ₹ <input type="number" min="0" [(ngModel)]="amcDraft.annualCost" name="ac-{{ a.id }}" style="width:110px" /></label>
+                <input type="text" placeholder="Coverage" [(ngModel)]="amcDraft.coverage" name="ag-{{ a.id }}" style="min-width:160px" />
+                <button class="primary" (click)="saveAmc(a)" [disabled]="busyId() === a.id">Save AMC</button>
+                <button (click)="closeInline()">Cancel</button>
+              </div>
+            </div>
+          }
         }
       </details>
     }

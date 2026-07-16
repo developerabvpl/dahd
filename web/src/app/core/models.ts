@@ -178,6 +178,15 @@ export interface StockByDrugRow {
   batchesNearExpiry30Days: number;
 }
 
+export interface CreateColdChainLogRequest {
+  warehouseId: string;
+  deviceId: string;
+  deviceName: string;
+  readingAt: string;
+  temperatureCelsius: number;
+  remarks?: string;
+}
+
 export interface DispenseEvent {
   id: string;
   batchId: string;

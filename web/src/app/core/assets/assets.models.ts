@@ -109,3 +109,29 @@ export interface AssetKpi {
 export interface LogBreakdownRequest { description: string; assignedTo?: string; }
 export interface CompleteJobRequest { resolution: string; cost?: number; }
 export interface CreateScheduleRequest { taskDescription: string; frequencyDays: number; lastServiceDate?: string; }
+
+export interface CreateAssetRequest {
+  assetTag: string;
+  name: string;
+  category: AssetCategory;
+  model?: string;
+  serialNumber?: string;
+  manufacturer?: string;
+  warehouseId?: string;
+  facilityId?: string;
+  locationNote?: string;
+  purchaseDate?: string;
+  purchaseCost?: number;
+  warrantyUntil?: string;
+  condition: AssetCondition;
+  notes?: string;
+}
+
+export interface CreateAmcRequest {
+  contractNumber: string;
+  vendorName: string;
+  startDate: string;
+  endDate: string;
+  annualCost: number;
+  coverage?: string;
+}
