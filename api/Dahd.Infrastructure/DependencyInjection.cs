@@ -13,17 +13,29 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddDahdInfrastructure(this IServiceCollection services, IConfiguration config)
     {
-        var conn = config.GetConnectionString("Default")
-                   ?? "Server=(localdb)\\MSSQLLocalDB;Database=DahdDev;Trusted_Connection=True;TrustServerCertificate=True;";
+        // Provider selection: SQLite by default (file-based, zero install, immune to
+        // LocalDB service failures). Set Database:Provider = "SqlServer" to use the
+        // ConnectionStrings:Default SQL Server connection instead.
+        var provider = config["Database:Provider"] ?? "Sqlite";
 
-        services.AddDbContext<DahdDbContext>(opts =>
-            opts.UseSqlServer(conn, sql =>
-                // LocalDB sleeps when idle and drops the first connection after wake-up;
-                // retry transparently so the first request after idle no longer fails.
-                sql.EnableRetryOnFailure(
-                    maxRetryCount: 5,
-                    maxRetryDelay: TimeSpan.FromSeconds(3),
-                    errorNumbersToAdd: null)));
+        if (provider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
+        {
+            var conn = config.GetConnectionString("Default")
+                       ?? "Server=(localdb)\\MSSQLLocalDB;Database=DahdDev;Trusted_Connection=True;TrustServerCertificate=True;";
+            services.AddDbContext<DahdDbContext>(opts =>
+                opts.UseSqlServer(conn, sql =>
+                    // LocalDB sleeps when idle and drops the first connection after wake-up;
+                    // retry transparently so the first request after idle no longer fails.
+                    sql.EnableRetryOnFailure(
+                        maxRetryCount: 5,
+                        maxRetryDelay: TimeSpan.FromSeconds(3),
+                        errorNumbersToAdd: null)));
+        }
+        else
+        {
+            var conn = config.GetConnectionString("Sqlite") ?? "Data Source=dahd.db";
+            services.AddDbContext<DahdDbContext>(opts => opts.UseSqlite(conn));
+        }
 
         services.Configure<JwtOptions>(config.GetSection(JwtOptions.SectionName));
         services.AddHttpContextAccessor();

@@ -11,6 +11,11 @@ out/
 *.mdf
 *.ldf
 
+# SQLite dev database
+*.db
+*.db-shm
+*.db-wal
+
 # Angular / Node
 node_modules/
 dist/

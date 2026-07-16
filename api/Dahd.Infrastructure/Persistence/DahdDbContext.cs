@@ -281,6 +281,24 @@ public class DahdDbContext : DbContext
             e.HasOne(m => m.Warehouse).WithMany().HasForeignKey(m => m.WarehouseId).OnDelete(DeleteBehavior.Restrict);
         });
 
+        // SQLite stores decimal as TEXT, which breaks server-side comparison,
+        // ordering and aggregation. Map every decimal to double (REAL) on SQLite
+        // so all existing LINQ queries translate. Precision loss is irrelevant at
+        // stock-quantity/cost magnitudes.
+        if (Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite")
+        {
+            foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+            {
+                foreach (var property in entityType.GetProperties())
+                {
+                    if (property.ClrType == typeof(decimal))
+                        property.SetProviderClrType(typeof(double));
+                    else if (property.ClrType == typeof(decimal?))
+                        property.SetProviderClrType(typeof(double?));
+                }
+            }
+        }
+
         base.OnModelCreating(modelBuilder);
     }
 }

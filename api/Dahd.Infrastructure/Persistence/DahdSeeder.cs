@@ -13,7 +13,12 @@ public static class DahdSeeder
         var db = sp.GetRequiredService<DahdDbContext>();
         var hasher = sp.GetRequiredService<IPasswordHasher>();
 
-        await db.Database.MigrateAsync(ct);
+        // SQL Server uses the migration history; SQLite (dev default) has no
+        // provider-specific migrations, so create the schema from the model.
+        if (db.Database.IsSqlite())
+            await db.Database.EnsureCreatedAsync(ct);
+        else
+            await db.Database.MigrateAsync(ct);
 
         if (!await db.Drugs.AnyAsync(ct))
         {
