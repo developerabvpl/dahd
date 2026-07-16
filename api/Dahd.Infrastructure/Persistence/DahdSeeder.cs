@@ -16,9 +16,33 @@ public static class DahdSeeder
         // SQL Server uses the migration history; SQLite (dev default) has no
         // provider-specific migrations, so create the schema from the model.
         if (db.Database.IsSqlite())
+        {
+            // EnsureCreated cannot ALTER an existing file when the model gains new
+            // tables. Sentinel = newest table in the model; if the file has tables
+            // but not the sentinel, rebuild the demo DB (it fully re-seeds below).
+            const string sentinelTable = "PurchaseOrders";
+            var conn = db.Database.GetDbConnection();
+            await conn.OpenAsync(ct);
+            int totalTables, sentinel;
+            await using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table'";
+                totalTables = Convert.ToInt32(await cmd.ExecuteScalarAsync(ct));
+                cmd.CommandText = $"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{sentinelTable}'";
+                sentinel = Convert.ToInt32(await cmd.ExecuteScalarAsync(ct));
+            }
+            await conn.CloseAsync();
+
+            if (totalTables > 0 && sentinel == 0)
+            {
+                await db.Database.EnsureDeletedAsync(ct); // demo DB — fully re-seeded
+            }
             await db.Database.EnsureCreatedAsync(ct);
+        }
         else
+        {
             await db.Database.MigrateAsync(ct);
+        }
 
         if (!await db.Drugs.AnyAsync(ct))
         {

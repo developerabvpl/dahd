@@ -28,6 +28,8 @@ public class DahdDbContext : DbContext
     public DbSet<MaintenanceJob> MaintenanceJobs => Set<MaintenanceJob>();
     public DbSet<AmcContract> AmcContracts => Set<AmcContract>();
     public DbSet<ParLevel> ParLevels => Set<ParLevel>();
+    public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
+    public DbSet<PurchaseOrderLine> PurchaseOrderLines => Set<PurchaseOrderLine>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -279,6 +281,29 @@ public class DahdDbContext : DbContext
             e.HasIndex(m => m.BatchId);
             e.HasOne(m => m.Drug).WithMany().HasForeignKey(m => m.DrugId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(m => m.Warehouse).WithMany().HasForeignKey(m => m.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PurchaseOrder>(e =>
+        {
+            e.Property(p => p.PoNumber).HasMaxLength(40).IsRequired();
+            e.Property(p => p.VendorName).HasMaxLength(200);
+            e.Property(p => p.CancelReason).HasMaxLength(500);
+            e.Property(p => p.Remarks).HasMaxLength(500);
+            e.HasIndex(p => p.PoNumber).IsUnique();
+            e.HasIndex(p => p.Status);
+            e.HasOne(p => p.Vendor).WithMany().HasForeignKey(p => p.VendorId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(p => p.RateContract).WithMany().HasForeignKey(p => p.RateContractId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(p => p.DestinationWarehouse).WithMany().HasForeignKey(p => p.DestinationWarehouseId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PurchaseOrderLine>(e =>
+        {
+            e.Property(l => l.OrderedQuantity).HasPrecision(18, 4);
+            e.Property(l => l.UnitRate).HasPrecision(18, 4);
+            e.Property(l => l.ReceivedQuantity).HasPrecision(18, 4);
+            e.Property(l => l.Remarks).HasMaxLength(300);
+            e.HasOne(l => l.PurchaseOrder).WithMany(p => p.Lines).HasForeignKey(l => l.PurchaseOrderId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(l => l.Drug).WithMany().HasForeignKey(l => l.DrugId).OnDelete(DeleteBehavior.Restrict);
         });
 
         // SQLite stores decimal as TEXT, which breaks server-side comparison,

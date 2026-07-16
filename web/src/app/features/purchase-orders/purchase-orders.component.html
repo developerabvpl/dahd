@@ -1,0 +1,195 @@
+<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap">
+  <div>
+    <h2>Purchase Orders</h2>
+    <p style="color:#6b7d90; margin:0 0 1rem">D11 procurement lifecycle: <strong>Draft → Issue to vendor → Vendor acknowledges → GRN</strong>. Rates prefill from the cheapest active rate contract; GRN lands each line as a batch in stock and writes the ledger against the PO number.</p>
+  </div>
+  @if (canCreate()) {
+    <button class="primary" (click)="toggleCreate()">{{ showCreate() ? 'Close' : '+ New PO' }}</button>
+  }
+</div>
+
+@if (notice()) { <div class="card" style="color:#065f46">{{ notice() }}</div> }
+@if (error())  { <div class="card" style="color:#b91c1c">{{ error() }}</div> }
+
+<!-- New PO form -->
+@if (showCreate()) {
+  <div class="card">
+    <h3 style="margin-top:0">New purchase order</h3>
+    <div class="action-row">
+      @if (vendors().length > 0) {
+        <label>Empanelled vendor
+          <select [(ngModel)]="draft.vendorId" name="po-vendor">
+            <option [ngValue]="undefined">— none (type name) —</option>
+            @for (v of vendors(); track v.id) { <option [value]="v.id">{{ v.legalName }}</option> }
+          </select>
+        </label>
+      }
+      @if (!draft.vendorId) {
+        <label>Vendor name <input type="text" [(ngModel)]="draft.vendorName" name="po-vname" placeholder="Supplier name" style="min-width:200px" /></label>
+      }
+      <label>Destination warehouse *
+        <select [(ngModel)]="draft.destinationWarehouseId" name="po-wh">
+          <option value="" disabled>— select —</option>
+          @for (w of warehouses(); track w.id) { <option [value]="w.id">{{ w.code }} — {{ w.name }}</option> }
+        </select>
+      </label>
+      <label>Expected delivery <input type="date" [(ngModel)]="draft.expectedDelivery" name="po-eta" /></label>
+    </div>
+
+    <h4>Lines <small style="color:#6b7d90; font-weight:normal">(rate prefills from the cheapest active rate contract)</small></h4>
+    <table>
+      <thead><tr><th>Drug</th><th>Qty</th><th>₹/unit</th><th>Line total</th><th>Remarks</th><th></th></tr></thead>
+      <tbody>
+        @for (l of draft.lines; track $index) {
+          <tr>
+            <td>
+              <select [(ngModel)]="l.drugId" (ngModelChange)="onLineDrugChange($index)" name="pol-drug-{{ $index }}" style="min-width:220px">
+                <option value="" disabled>— drug —</option>
+                @for (d of drugs(); track d.id) { <option [value]="d.id">{{ d.code }} — {{ d.name }}</option> }
+              </select>
+            </td>
+            <td><input type="number" min="1" step="1" [(ngModel)]="l.orderedQuantity" name="pol-qty-{{ $index }}" style="width:90px" /></td>
+            <td><input type="number" min="0" step="0.01" [(ngModel)]="l.unitRate" name="pol-rate-{{ $index }}" style="width:100px" /></td>
+            <td>₹{{ (l.orderedQuantity || 0) * (l.unitRate || 0) | number:'1.0-2' }}</td>
+            <td><input type="text" [(ngModel)]="l.remarks" name="pol-rem-{{ $index }}" /></td>
+            <td>@if (draft.lines.length > 1) { <button (click)="removeLine($index)">✕</button> }</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+    <div class="action-row" style="margin-top:0.5rem">
+      <button (click)="addLine()">+ Add line</button>
+      <label style="flex:1">Remarks <input type="text" [(ngModel)]="draft.remarks" name="po-rem" /></label>
+      <strong>Total: ₹{{ draftTotal() | number:'1.0-2' }}</strong>
+      <button class="primary" (click)="createPo()" [disabled]="busyId() === 'create'">
+        {{ busyId() === 'create' ? 'Creating...' : 'Create PO (Draft)' }}
+      </button>
+    </div>
+  </div>
+}
+
+<!-- Status tabs -->
+<div class="card" style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap">
+  <button (click)="statusFilter.set('')" [class.primary]="statusFilter() === ''">All ({{ pos().length }})</button>
+  @for (s of statuses; track s) {
+    <button (click)="statusFilter.set(s)" [class.primary]="statusFilter() === s">{{ s }} ({{ countFor(s) }})</button>
+  }
+</div>
+
+@if (loading()) {
+  <div class="card">Loading...</div>
+} @else if (filtered().length === 0) {
+  <div class="card">No purchase orders in this view. @if (canCreate()) { Use “+ New PO” to raise one. }</div>
+} @else {
+  @for (p of filtered(); track p.id) {
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem">
+        <div>
+          <strong style="font-size:1rem">{{ p.poNumber }}</strong>
+          <span class="badge {{ statusCls(p.status) }}" style="margin-left:0.5rem">{{ p.status }}</span>
+          @if (p.rateContractNumber) { <span class="badge" style="margin-left:0.3rem">RC {{ p.rateContractNumber }}</span> }
+        </div>
+        <small style="color:#6b7d90">
+          🏭 {{ p.vendorName }} &nbsp;→&nbsp; 📥 {{ p.destinationWarehouseName }}
+          @if (p.expectedDelivery) { · ETA {{ p.expectedDelivery }} }
+          @if (p.issuedAt) { · issued {{ p.issuedAt | date:'short' }} }
+          @if (p.acknowledgedAt) { · ack {{ p.acknowledgedAt | date:'short' }} }
+          @if (p.fullyReceivedAt) { · received {{ p.fullyReceivedAt | date:'short' }} }
+          · <strong>₹{{ p.totalAmount | number:'1.0-2' }}</strong>
+        </small>
+      </div>
+
+      <!-- lines always visible -->
+      <table style="margin-top:0.6rem">
+        <thead><tr><th>Drug</th><th>Ordered</th><th>₹/unit</th><th>Line total</th><th>Received</th><th>Pending</th></tr></thead>
+        <tbody>
+          @for (l of p.lines; track l.id) {
+            <tr>
+              <td><strong>{{ l.drugCode }}</strong> — {{ l.drugName }}</td>
+              <td>{{ l.orderedQuantity }} {{ l.unitOfMeasure }}</td>
+              <td>₹{{ l.unitRate }}</td>
+              <td>₹{{ l.lineTotal | number:'1.0-2' }}</td>
+              <td>{{ l.receivedQuantity }}</td>
+              <td>
+                @if (remaining(l) > 0) { <span class="badge warn">{{ remaining(l) }}</span> }
+                @else { <span class="badge ok">complete</span> }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      @if (p.remarks) { <small style="color:#6b7d90">📝 {{ p.remarks }}</small> }
+      @if (p.status === 'Cancelled') { <small style="color:#b91c1c">✕ Cancelled: {{ p.cancelReason }}</small> }
+
+      <!-- Cancel panel -->
+      @if (cancelId() === p.id) {
+        <div style="margin-top:0.7rem; padding:0.7rem; background:#fef2f2; border:1px solid #fca5a5; border-radius:6px">
+          <strong>Cancel {{ p.poNumber }}</strong>
+          <div class="action-row" style="margin-top:0.4rem">
+            <input type="text" placeholder="Reason (sent to record)" [(ngModel)]="cancelReason" name="cx-{{ p.id }}" style="min-width:280px" />
+            <button class="primary" (click)="confirmCancel(p)" [disabled]="busyId() === p.id">Confirm cancel</button>
+            <button (click)="cancelId.set(null)">Back</button>
+          </div>
+        </div>
+      }
+
+      <!-- GRN panel -->
+      @if (grnId() === p.id) {
+        <div style="margin-top:0.7rem; padding:0.7rem; background:#ecfdf5; border:1px solid #6ee7b7; border-radius:6px">
+          <strong>Goods receipt (GRN) on {{ p.poNumber }}</strong>
+          <div class="action-row" style="margin-top:0.4rem">
+            <label>Receive into
+              <select [(ngModel)]="grnWarehouseId" name="grn-wh-{{ p.id }}">
+                @for (w of warehouses(); track w.id) { <option [value]="w.id">{{ w.code }} — {{ w.name }}</option> }
+              </select>
+            </label>
+          </div>
+          <table style="margin-top:0.4rem">
+            <thead><tr><th>Drug</th><th>Pending</th><th>Receive qty</th><th>Batch no *</th><th>Mfg date</th><th>Expiry *</th></tr></thead>
+            <tbody>
+              @for (l of p.lines; track l.id) {
+                @if (remaining(l) > 0 && grnLines[l.id]) {
+                  <tr>
+                    <td>{{ l.drugCode }}</td>
+                    <td>{{ remaining(l) }}</td>
+                    <td><input type="number" min="0" [max]="remaining(l)" [(ngModel)]="grnLines[l.id].quantity" name="g-q-{{ l.id }}" style="width:90px" /></td>
+                    <td><input type="text" [(ngModel)]="grnLines[l.id].batchNumber" name="g-b-{{ l.id }}" style="width:140px" placeholder="e.g. {{ l.drugCode }}-2026-01" /></td>
+                    <td><input type="date" [(ngModel)]="grnLines[l.id].manufactureDate" name="g-m-{{ l.id }}" /></td>
+                    <td><input type="date" [(ngModel)]="grnLines[l.id].expiryDate" name="g-e-{{ l.id }}" /></td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+          <div class="action-row" style="margin-top:0.4rem">
+            <small style="color:#6b7d90; flex:1">Qty 0 skips a line. Cold-chain drugs need a cold-chain-capable warehouse (server enforces).</small>
+            <button class="primary" (click)="confirmGrn(p)" [disabled]="busyId() === p.id">Confirm goods receipt</button>
+            <button (click)="grnId.set(null)">Cancel</button>
+          </div>
+        </div>
+      }
+
+      <!-- actions -->
+      @if (cancelId() !== p.id && grnId() !== p.id) {
+        <div class="action-row" style="margin-top:0.6rem">
+          @if (p.status === 'Draft' && canIssue()) {
+            <button class="primary" (click)="issue(p)" [disabled]="busyId() === p.id">Issue to vendor</button>
+          }
+          @if (p.status === 'Issued' && canCreate()) {
+            <button class="primary" (click)="acknowledge(p)" [disabled]="busyId() === p.id">Mark acknowledged</button>
+          }
+          @if ((p.status === 'Issued' || p.status === 'Acknowledged' || p.status === 'PartiallyReceived') && canCreate()) {
+            <button class="primary" (click)="beginGrn(p)">Receive (GRN)</button>
+          }
+          @if ((p.status === 'Draft' || p.status === 'Issued' || p.status === 'Acknowledged') && canIssue()) {
+            <button (click)="beginCancel(p)">Cancel PO</button>
+          }
+          @if (p.status === 'Received') {
+            <small style="color:#065f46">✓ Fully received {{ p.fullyReceivedAt | date:'short' }}</small>
+          }
+        </div>
+      }
+    </div>
+  }
+}

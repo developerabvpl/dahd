@@ -33,6 +33,7 @@ export const routes: Routes = [
       { path: 'dispense',    loadComponent: () => import('./features/dispense/dispense.component').then(m => m.DispenseComponent) },
       { path: 'campaigns',   loadComponent: () => import('./features/campaigns/campaigns.component').then(m => m.CampaignsComponent) },
       { path: 'rate-contracts', loadComponent: () => import('./features/rate-contracts/rate-contracts.component').then(m => m.RateContractsComponent) },
+      { path: 'purchase-orders', loadComponent: () => import('./features/purchase-orders/purchase-orders.component').then(m => m.PurchaseOrdersComponent) },
       { path: 'redistribution', loadComponent: () => import('./features/redistribution/redistribution.component').then(m => m.RedistributionComponent) },
       { path: 'consumption', loadComponent: () => import('./features/consumption/consumption.component').then(m => m.ConsumptionComponent) },
       { path: 'outbreaks',   loadComponent: () => import('./features/outbreaks/outbreaks.component').then(m => m.OutbreaksComponent) },

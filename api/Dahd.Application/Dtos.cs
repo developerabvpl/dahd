@@ -69,6 +69,40 @@ public record ParAutoIndentRequest(Guid RecipientWarehouseId, Guid SourceWarehou
 
 public record ParAutoIndentResponse(Guid? IndentId, string? IndentNumber, int LineCount, decimal TotalQuantity);
 
+// ---- Purchase orders ----
+
+public record PoLineDto(
+    Guid Id, Guid DrugId, string DrugCode, string DrugName, string UnitOfMeasure,
+    decimal OrderedQuantity, decimal UnitRate, decimal ReceivedQuantity,
+    decimal LineTotal, string? Remarks);
+
+public record PurchaseOrderDto(
+    Guid Id, string PoNumber,
+    Guid? VendorId, string? VendorName,
+    Guid? RateContractId, string? RateContractNumber,
+    Guid DestinationWarehouseId, string DestinationWarehouseName,
+    PoStatus Status, DateOnly? ExpectedDelivery,
+    DateTime? IssuedAt, DateTime? AcknowledgedAt, DateTime? FullyReceivedAt,
+    DateTime? CancelledAt, string? CancelReason, string? Remarks,
+    decimal TotalAmount, IReadOnlyList<PoLineDto> Lines);
+
+public record CreatePoLineRequest(Guid DrugId, decimal OrderedQuantity, decimal UnitRate, string? Remarks);
+
+public record CreatePoRequest(
+    Guid? VendorId, string? VendorName,
+    Guid? RateContractId, Guid DestinationWarehouseId,
+    DateOnly? ExpectedDelivery, string? Remarks,
+    List<CreatePoLineRequest> Lines);
+
+public record CancelPoRequest(string Reason);
+
+public record GrnLineRequest(
+    Guid LineId, decimal Quantity,
+    string BatchNumber, DateOnly ManufactureDate, DateOnly ExpiryDate,
+    string? Manufacturer);
+
+public record GrnRequest(Guid? WarehouseId, List<GrnLineRequest> Lines);
+
 public record CreateIndentLineRequest(Guid DrugId, decimal RequestedQuantity, string? Remarks);
 public record CreateIndentRequest(
     Guid RaisedByWarehouseId, Guid FulfilledByWarehouseId,

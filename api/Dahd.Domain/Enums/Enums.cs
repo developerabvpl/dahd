@@ -40,6 +40,16 @@ public enum IndentStatus
     Cancelled = 8
 }
 
+public enum PoStatus
+{
+    Draft = 1,
+    Issued = 2,
+    Acknowledged = 3,
+    PartiallyReceived = 4,
+    Received = 5,
+    Cancelled = 6
+}
+
 public enum StockMovementType
 {
     Opening = 1,
