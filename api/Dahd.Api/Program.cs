@@ -7,6 +7,42 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
+// One-shot backup: `dotnet run -- backup [destPath]`.
+// Uses SQLite VACUUM INTO for a consistent single-file snapshot even while the
+// server is running (no torn writes). Only valid on the SQLite provider.
+if (args.Length >= 1 && string.Equals(args[0], "backup", StringComparison.OrdinalIgnoreCase))
+{
+    var cfg = new ConfigurationBuilder()
+        .SetBasePath(Directory.GetCurrentDirectory())
+        .AddJsonFile("appsettings.json", optional: true)
+        .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"}.json", optional: true)
+        .AddEnvironmentVariables()
+        .Build();
+
+    var provider = cfg["Database:Provider"] ?? "Sqlite";
+    if (!provider.Equals("Sqlite", StringComparison.OrdinalIgnoreCase))
+    {
+        Console.Error.WriteLine("backup: this command supports the SQLite provider only. For SQL Server use BACKUP DATABASE / SSMS.");
+        return 1;
+    }
+
+    var srcConn = cfg.GetConnectionString("Sqlite") ?? "Data Source=dahd.db";
+    var dest = args.Length >= 2
+        ? args[1]
+        : $"dahd-backup-{DateTime.Now:yyyyMMdd-HHmmss}.db";
+
+    await using var conn = new Microsoft.Data.Sqlite.SqliteConnection(srcConn);
+    await conn.OpenAsync();
+    await using (var cmd = conn.CreateCommand())
+    {
+        cmd.CommandText = $"VACUUM INTO '{dest.Replace("'", "''")}'";
+        await cmd.ExecuteNonQueryAsync();
+    }
+    var full = Path.GetFullPath(dest);
+    Console.WriteLine($"Backup OK -> {full} ({new FileInfo(full).Length / 1024} KB)");
+    return 0;
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers().AddJsonOptions(opts =>
@@ -106,3 +142,4 @@ app.MapControllers();
 }
 
 app.Run();
+return 0;
