@@ -3,6 +3,7 @@ using Dahd.Infrastructure.Auditing;
 using Dahd.Infrastructure.Auth;
 using Dahd.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,6 +35,7 @@ public static class DependencyInjection
         else
         {
             var conn = config.GetConnectionString("Sqlite") ?? "Data Source=dahd.db";
+            conn = ResolveSqliteDataSource(conn);
             services.AddDbContext<DahdDbContext>(opts => opts.UseSqlite(conn));
         }
 
@@ -46,5 +48,39 @@ public static class DependencyInjection
         services.AddScoped<IStockLedger, StockLedger>();
 
         return services;
+    }
+
+    // A relative SQLite "Data Source" resolves against the process working
+    // directory, which under a Windows service / IIS is often a system folder
+    // the app can't write to — so reads succeed but the first write (login)
+    // throws a 500. Anchor a relative path to the app's own install folder
+    // (AppContext.BaseDirectory) so behaviour no longer depends on how the app
+    // was launched, and ensure that folder exists.
+    private static string ResolveSqliteDataSource(string connectionString)
+    {
+        var csb = new SqliteConnectionStringBuilder(connectionString);
+        var dataSource = csb.DataSource;
+
+        // Leave special sources (in-memory, etc.) untouched.
+        if (string.IsNullOrWhiteSpace(dataSource) ||
+            dataSource.Equals(":memory:", StringComparison.OrdinalIgnoreCase) ||
+            dataSource.StartsWith("file:", StringComparison.OrdinalIgnoreCase))
+        {
+            return connectionString;
+        }
+
+        if (!Path.IsPathRooted(dataSource))
+        {
+            dataSource = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, dataSource));
+        }
+
+        var dir = Path.GetDirectoryName(dataSource);
+        if (!string.IsNullOrEmpty(dir))
+        {
+            Directory.CreateDirectory(dir);
+        }
+
+        csb.DataSource = dataSource;
+        return csb.ConnectionString;
     }
 }
