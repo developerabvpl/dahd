@@ -115,9 +115,20 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
+
+// Serve the built Angular UI from wwwroot when present (single-process deploy:
+// one Kestrel process hosts both the API and the SPA). No-op in dev, where the
+// frontend is served by `ng serve` and there is no wwwroot.
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+// SPA fallback: any non-API, non-file route returns index.html so Angular's
+// router handles deep links. Lowest priority — controllers and static files win.
+app.MapFallbackToFile("index.html");
 
 // Migrate + seed with a short retry loop: a sleeping LocalDB can drop the very
 // first connection during startup migration (before the app is listening), which

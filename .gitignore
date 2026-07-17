@@ -52,3 +52,6 @@ TestResults/
 # Build artifacts
 publish/
 PublishProfiles/
+
+# Deploy bundle
+dist-server/

@@ -6,6 +6,43 @@ built frontend, and ship your database file alongside the API.
 
 ---
 
+## Quick path — one command (single-process bundle)
+
+From the repo root:
+
+```pwsh
+.\publish.ps1
+```
+
+This produces a self-contained folder `dist-server\` that **one Kestrel process
+serves entirely** — the API and the Angular UI on the same port, no reverse
+proxy or CORS needed. It:
+
+1. `dotnet publish`es the API,
+2. builds the frontend in production mode (`apiUrl: '/api'`) into `wwwroot\`,
+3. ships a consistent snapshot of your **current** `dahd.db` (via `VACUUM INTO`),
+4. writes `appsettings.Production.json` with a **freshly generated** JWT key.
+
+Copy `dist-server\` to the server and run:
+
+```pwsh
+set ASPNETCORE_ENVIRONMENT=Production
+set ASPNETCORE_URLS=http://0.0.0.0:8080
+dotnet Dahd.Api.dll
+```
+
+Open `http://<server>:8080` (login `admin` / `admin123` — change it). Put HTTPS
+(Nginx/IIS/Caddy) in front for production.
+
+Variants: `.\publish.ps1 -FreshDb` (ship an empty DB that auto-seeds on first
+run) · `.\publish.ps1 -Out D:\deploy` (output elsewhere). See
+`dist-server\README-DEPLOY.txt` in the bundle for the same run notes.
+
+The manual, component-by-component steps below are for custom setups (separate
+static host + reverse proxy, IIS, systemd, SQL Server, etc.).
+
+---
+
 ## 1. Back up the database (preserve current data)
 
 From the repo root:
