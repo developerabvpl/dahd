@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   Asset, AssetCategory, AssetJob, AssetKpi, AssetStatus,
-  CompleteJobRequest, CreateAmcRequest, CreateAssetRequest,
+  CalibrationDueRow, CompleteJobRequest, CreateAmcRequest, CreateAssetRequest,
   CreateScheduleRequest, LogBreakdownRequest,
   MaintenanceDueRow, MaintenanceJobStatus
 } from './assets.models';
@@ -49,6 +49,10 @@ export class AssetsService {
 
   due(withinDays = 30): Observable<MaintenanceDueRow[]> {
     return this.http.get<MaintenanceDueRow[]>(`${this.base}/maintenance/due`, { params: { withinDays: String(withinDays) } });
+  }
+
+  calibrationDue(withinDays = 60): Observable<CalibrationDueRow[]> {
+    return this.http.get<CalibrationDueRow[]>(`${this.base}/maintenance/calibration-due`, { params: { withinDays: String(withinDays) } });
   }
 
   jobs(opts?: { status?: MaintenanceJobStatus }): Observable<AssetJob[]> {

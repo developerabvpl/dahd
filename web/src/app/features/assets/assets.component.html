@@ -20,9 +20,15 @@
           @for (c of categories; track c) { <option [value]="c">{{ c }}</option> }
         </select>
       </label>
+      <label>
+        <span>Criticality *</span>
+        <select [(ngModel)]="draft.criticality" name="crit" required>
+          @for (c of criticalities; track c) { <option [value]="c">{{ c }} — {{ c === 'A' ? 'mission-critical' : c === 'B' ? 'important' : 'routine' }}</option> }
+        </select>
+      </label>
       <label><span>Model</span><input type="text" [(ngModel)]="draft.model" name="model" /></label>
       <label><span>Serial number</span><input type="text" [(ngModel)]="draft.serialNumber" name="serial" /></label>
-      <label><span>Manufacturer</span><input type="text" [(ngModel)]="draft.manufacturer" name="mfr" /></label>
+      <label><span>Manufacturer / Make</span><input type="text" [(ngModel)]="draft.manufacturer" name="mfr" /></label>
       <label>
         <span>Warehouse (location)</span>
         <select [(ngModel)]="draft.warehouseId" name="wh">
@@ -37,10 +43,18 @@
           @for (f of facilities(); track f.id) { <option [value]="f.id">{{ f.code }} — {{ f.name }}</option> }
         </select>
       </label>
-      <label><span>Location note</span><input type="text" [(ngModel)]="draft.locationNote" name="locnote" /></label>
+      <label><span>Location note / Room</span><input type="text" [(ngModel)]="draft.locationNote" name="locnote" /></label>
+      <label><span>Supplier</span><input type="text" [(ngModel)]="draft.supplier" name="supplier" /></label>
+      <label><span>PO number</span><input type="text" [(ngModel)]="draft.poNumber" name="pono" /></label>
+      <label><span>PO date</span><input type="date" [(ngModel)]="draft.poDate" name="podate" /></label>
+      <label><span>Invoice number</span><input type="text" [(ngModel)]="draft.invoiceNumber" name="invno" /></label>
+      <label><span>Invoice date</span><input type="date" [(ngModel)]="draft.invoiceDate" name="invdate" /></label>
+      <label><span>Installation date</span><input type="date" [(ngModel)]="draft.installationDate" name="instdate" /></label>
       <label><span>Purchase date</span><input type="date" [(ngModel)]="draft.purchaseDate" name="pdate" /></label>
       <label><span>Purchase cost (₹)</span><input type="number" min="0" step="0.01" [(ngModel)]="draft.purchaseCost" name="pcost" /></label>
       <label><span>Warranty until</span><input type="date" [(ngModel)]="draft.warrantyUntil" name="warranty" /></label>
+      <label><span>Last calibration</span><input type="date" [(ngModel)]="draft.calibrationDate" name="caldate" /></label>
+      <label><span>Calibration due</span><input type="date" [(ngModel)]="draft.calibrationDueDate" name="caldue" /></label>
       <label>
         <span>Condition</span>
         <select [(ngModel)]="draft.condition" name="cond">
@@ -64,7 +78,13 @@
     <div class="kpi warn"><div class="label">Under Maintenance</div><div class="value">{{ k.underMaintenance }}</div></div>
     <div class="kpi bad"><div class="label">In Breakdown</div><div class="value">{{ k.inBreakdown }}</div></div>
     <div class="kpi bad"><div class="label">Overdue PPM</div><div class="value">{{ k.overduePpm }}</div></div>
-    <div class="kpi warn"><div class="label">AMC Expiring 60d</div><div class="value">{{ k.amcExpiring60Days }}</div></div>
+    <div class="kpi bad"><div class="label">Calibration Overdue</div><div class="value">{{ k.calibrationOverdue }}</div></div>
+    <div class="kpi warn"><div class="label">Calibration Due 60d</div><div class="value">{{ k.calibrationDue60Days }}</div></div>
+    <div class="kpi bad"><div class="label">Warranty Expired</div><div class="value">{{ k.warrantyExpired }}</div></div>
+    <div class="kpi warn"><div class="label">AMC/CMC Expiring 60d</div><div class="value">{{ k.amcExpiring60Days }}</div></div>
+    <div class="kpi bad"><div class="label">Critical Incidents</div><div class="value">{{ k.openCriticalIncidents }}</div></div>
+    <div class="kpi bad"><div class="label">SLA Breached</div><div class="value">{{ k.slaBreachedIncidents }}</div></div>
+    <div class="kpi"><div class="label">AMC/CMC Annual ₹</div><div class="value">{{ k.amcAnnualCostTotal | number }}</div></div>
   </div>
 }
 
@@ -89,9 +109,13 @@
       <details class="vendor">
         <summary>
           <span class="title">{{ a.assetTag }} · {{ a.name }}</span>
+          <span class="badge {{ critCls(a.criticality) }}" title="Criticality class">Class {{ a.criticality }}</span>
           <span class="badge">{{ a.category }}</span>
           <span class="badge {{ statusCls(a.status) }}">{{ a.status }}</span>
           @if (a.overdueSchedules > 0) { <span class="badge bad">{{ a.overdueSchedules }} PPM overdue</span> }
+          @let cd = calibrationDays(a);
+          @if (cd !== null && cd < 0) { <span class="badge bad">calibration overdue</span> }
+          @else if (cd !== null && cd <= 60) { <span class="badge warn">calibration due {{ cd }}d</span> }
           @if (a.openJobs > 0) { <span class="badge warn">{{ a.openJobs }} open job(s)</span> }
           <small style="margin-left:auto">{{ location(a) }}</small>
         </summary>
@@ -99,9 +123,15 @@
         <div class="kv">
           <div><label>Make / Model</label><span>{{ a.manufacturer }} {{ a.model }}</span></div>
           <div><label>Serial</label><span>{{ a.serialNumber || '—' }}</span></div>
+          <div><label>Criticality</label><span>Class {{ a.criticality }}</span></div>
           <div><label>Condition</label><span>{{ a.condition }}</span></div>
+          <div><label>Supplier</label><span>{{ a.supplier || '—' }}</span></div>
+          <div><label>PO</label><span>{{ a.poNumber || '—' }} @if (a.poDate) { · {{ a.poDate }} }</span></div>
+          <div><label>Invoice</label><span>{{ a.invoiceNumber || '—' }} @if (a.invoiceDate) { · {{ a.invoiceDate }} }</span></div>
+          <div><label>Installed</label><span>{{ a.installationDate || '—' }}</span></div>
           <div><label>Purchased</label><span>{{ a.purchaseDate || '—' }} @if (a.purchaseCost) { · ₹{{ a.purchaseCost | number }} }</span></div>
           <div><label>Warranty Until</label><span>{{ a.warrantyUntil || '—' }}</span></div>
+          <div><label>Calibration</label><span>{{ a.calibrationDate || '—' }} @if (a.calibrationDueDate) { → due {{ a.calibrationDueDate }} }</span></div>
           <div><label>Location</label><span>{{ location(a) }}</span></div>
         </div>
 
@@ -128,13 +158,14 @@
         }
 
         @if (a.amcContracts.length > 0) {
-          <h4>AMC</h4>
+          <h4>AMC / CMC</h4>
           <table>
-            <thead><tr><th>Contract</th><th>Vendor</th><th>Period</th><th>Annual Cost</th><th>State</th></tr></thead>
+            <thead><tr><th>Contract</th><th>Type</th><th>Vendor</th><th>Period</th><th>Annual Cost</th><th>State</th></tr></thead>
             <tbody>
               @for (c of a.amcContracts; track c.id) {
                 <tr>
                   <td>{{ c.contractNumber }}</td>
+                  <td><span class="badge" title="{{ c.contractType === 'Cmc' ? 'Comprehensive — includes parts' : 'Labour only — no parts' }}">{{ c.contractType === 'Cmc' ? 'CMC' : 'AMC' }}</span></td>
                   <td>{{ c.vendorName }}</td>
                   <td>{{ c.startDate }} → {{ c.endDate }}</td>
                   <td>₹{{ c.annualCost | number }}</td>
@@ -152,14 +183,21 @@
         @if (a.jobs.length > 0) {
           <h4>Job history</h4>
           <table>
-            <thead><tr><th>Job</th><th>Type</th><th>Status</th><th>Reported</th><th>Description</th><th>Cost</th></tr></thead>
+            <thead><tr><th>Job</th><th>Type</th><th>Priority</th><th>Status</th><th>Reported</th><th>SLA deadline</th><th>Description</th><th>Cost</th></tr></thead>
             <tbody>
               @for (j of a.jobs; track j.id) {
                 <tr>
                   <td>{{ j.jobNumber }}</td>
                   <td><span class="badge">{{ j.type }}</span></td>
+                  <td>@if (j.priority) { <span class="badge {{ priorityCls(j.priority) }}">{{ j.priority }}</span> } @else { — }</td>
                   <td><span class="badge {{ j.status === 'Completed' ? 'ok' : j.status === 'Open' ? 'bad' : 'warn' }}">{{ j.status }}</span></td>
                   <td>{{ j.reportedAt | date:'short' }}</td>
+                  <td>
+                    @if (j.deadline) {
+                      {{ j.deadline | date:'short' }}
+                      @if (j.slaBreached) { <span class="badge bad">breached</span> }
+                    } @else { — }
+                  </td>
                   <td>{{ j.description }}</td>
                   <td>@if (j.cost) { ₹{{ j.cost | number }} }</td>
                 </tr>
@@ -171,7 +209,18 @@
         @if (canAct() && a.status !== 'Condemned' && a.status !== 'Disposed') {
           <h4>Actions</h4>
           <div class="action-row">
-            <input type="text" placeholder="Describe a breakdown..." [ngModel]="breakdownInput()[a.id] || ''" (ngModelChange)="setBreakdown(a.id, $event)" name="brk-{{ a.id }}" />
+            <input type="text" placeholder="Describe a breakdown..." [ngModel]="breakdownInput()[a.id] || ''" (ngModelChange)="setBreakdown(a.id, $event)" name="brk-{{ a.id }}" style="min-width:220px" />
+            <label>Problem
+              <select [ngModel]="breakdownProblem()[a.id] || ''" (ngModelChange)="setProblem(a.id, $event)" name="brkp-{{ a.id }}">
+                <option value="">—</option>
+                @for (p of problemTypes; track p) { <option [value]="p">{{ p }}</option> }
+              </select>
+            </label>
+            <label>Urgency
+              <select [ngModel]="breakdownUrgency()[a.id] || 'Medium'" (ngModelChange)="setUrgency(a.id, $event)" name="brku-{{ a.id }}">
+                @for (u of urgencyLevels; track u) { <option [value]="u">{{ u }}</option> }
+              </select>
+            </label>
             <button (click)="logBreakdown(a)" [disabled]="busyId() === a.id">Log breakdown</button>
             @if (canSchedule()) {
               <button (click)="openInline(a, 'schedule')">+ PPM schedule</button>
@@ -200,6 +249,12 @@
               <strong>New AMC for {{ a.assetTag }}</strong>
               <div class="action-row" style="margin-top:0.4rem">
                 <input type="text" placeholder="Contract no." [(ngModel)]="amcDraft.contractNumber" name="an-{{ a.id }}" style="width:150px" />
+                <label>Type
+                  <select [(ngModel)]="amcDraft.contractType" name="at-{{ a.id }}">
+                    <option value="Amc">AMC (no parts)</option>
+                    <option value="Cmc">CMC (with parts)</option>
+                  </select>
+                </label>
                 <input type="text" placeholder="Vendor" [(ngModel)]="amcDraft.vendorName" name="av-{{ a.id }}" style="min-width:180px" />
                 <label>From <input type="date" [(ngModel)]="amcDraft.startDate" name="as-{{ a.id }}" /></label>
                 <label>To <input type="date" [(ngModel)]="amcDraft.endDate" name="ae-{{ a.id }}" /></label>

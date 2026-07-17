@@ -40,15 +40,24 @@ public class AssetsController(DahdDbContext db, IAuditLogger audit) : Controller
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var soon = today.AddDays(60);
+        var now = DateTime.UtcNow;
+        var openJobs = db.MaintenanceJobs.Where(j => j.Status == MaintenanceJobStatus.Open || j.Status == MaintenanceJobStatus.InProgress);
         var dto = new AssetKpiDto(
             TotalAssets: await db.Assets.CountAsync(ct),
             ActiveAssets: await db.Assets.CountAsync(a => a.Status == AssetStatus.Active, ct),
             UnderMaintenance: await db.Assets.CountAsync(a => a.Status == AssetStatus.UnderMaintenance, ct),
             InBreakdown: await db.Assets.CountAsync(a => a.Status == AssetStatus.BreakdownReported, ct),
             Condemned: await db.Assets.CountAsync(a => a.Status == AssetStatus.Condemned, ct),
-            OpenJobs: await db.MaintenanceJobs.CountAsync(j => j.Status == MaintenanceJobStatus.Open || j.Status == MaintenanceJobStatus.InProgress, ct),
+            OpenJobs: await openJobs.CountAsync(ct),
             OverduePpm: await db.MaintenanceSchedules.CountAsync(s => s.IsActive && s.NextDueDate < today, ct),
-            AmcExpiring60Days: await db.AmcContracts.CountAsync(c => c.Status == AmcStatus.Active && c.EndDate >= today && c.EndDate <= soon, ct));
+            AmcExpiring60Days: await db.AmcContracts.CountAsync(c => c.Status == AmcStatus.Active && c.EndDate >= today && c.EndDate <= soon, ct),
+            WarrantyExpiring60Days: await db.Assets.CountAsync(a => a.WarrantyUntil != null && a.WarrantyUntil >= today && a.WarrantyUntil <= soon, ct),
+            WarrantyExpired: await db.Assets.CountAsync(a => a.WarrantyUntil != null && a.WarrantyUntil < today, ct),
+            CalibrationDue60Days: await db.Assets.CountAsync(a => a.CalibrationDueDate != null && a.CalibrationDueDate >= today && a.CalibrationDueDate <= soon, ct),
+            CalibrationOverdue: await db.Assets.CountAsync(a => a.CalibrationDueDate != null && a.CalibrationDueDate < today, ct),
+            OpenCriticalIncidents: await openJobs.CountAsync(j => j.Type == MaintenanceJobType.Breakdown && j.Priority == IncidentPriority.Critical, ct),
+            SlaBreachedIncidents: await openJobs.CountAsync(j => j.Deadline != null && j.Deadline < now, ct),
+            AmcAnnualCostTotal: await db.AmcContracts.Where(c => c.Status == AmcStatus.Active).SumAsync(c => (decimal?)c.AnnualCost, ct) ?? 0m);
         return Ok(dto);
     }
 
@@ -64,15 +73,24 @@ public class AssetsController(DahdDbContext db, IAuditLogger audit) : Controller
             AssetTag = req.AssetTag,
             Name = req.Name,
             Category = req.Category,
+            Criticality = req.Criticality,
             Model = req.Model,
             SerialNumber = req.SerialNumber,
             Manufacturer = req.Manufacturer,
             WarehouseId = req.WarehouseId,
             FacilityId = req.FacilityId,
             LocationNote = req.LocationNote,
+            Supplier = req.Supplier,
+            PoNumber = req.PoNumber,
+            PoDate = req.PoDate,
+            InvoiceNumber = req.InvoiceNumber,
+            InvoiceDate = req.InvoiceDate,
+            InstallationDate = req.InstallationDate,
             PurchaseDate = req.PurchaseDate,
             PurchaseCost = req.PurchaseCost,
             WarrantyUntil = req.WarrantyUntil,
+            CalibrationDate = req.CalibrationDate,
+            CalibrationDueDate = req.CalibrationDueDate,
             Status = AssetStatus.Active,
             Condition = req.Condition,
             Notes = req.Notes
@@ -143,6 +161,7 @@ public class AssetsController(DahdDbContext db, IAuditLogger audit) : Controller
         {
             AssetId = id,
             ContractNumber = req.ContractNumber,
+            ContractType = req.ContractType,
             VendorName = req.VendorName,
             StartDate = req.StartDate,
             EndDate = req.EndDate,
@@ -152,7 +171,7 @@ public class AssetsController(DahdDbContext db, IAuditLogger audit) : Controller
         });
         await db.SaveChangesAsync(ct);
         await audit.LogAsync(nameof(AmcContract), id, "AddAmc",
-            summary: $"AMC {req.ContractNumber} ({req.VendorName}) added to {asset.AssetTag}", ct: ct);
+            summary: $"{req.ContractType} {req.ContractNumber} ({req.VendorName}) added to {asset.AssetTag}", ct: ct);
         var reloaded = await AssetQuery().FirstAsync(x => x.Id == id, ct);
         return Ok(ToDto(reloaded, DateOnly.FromDateTime(DateTime.UtcNow)));
     }
@@ -161,25 +180,37 @@ public class AssetsController(DahdDbContext db, IAuditLogger audit) : Controller
         .Include(a => a.Warehouse).Include(a => a.Facility)
         .Include(a => a.Schedules).Include(a => a.Jobs).Include(a => a.AmcContracts);
 
+    /// <summary>Shared job → DTO mapper (also used by MaintenanceController) with SLA-breach flag.</summary>
+    internal static AssetJobDto JobToDto(MaintenanceJob j)
+    {
+        var open = j.Status == MaintenanceJobStatus.Open || j.Status == MaintenanceJobStatus.InProgress;
+        var slaBreached = open && j.Deadline.HasValue && j.Deadline.Value < DateTime.UtcNow;
+        return new AssetJobDto(
+            j.Id, j.JobNumber, j.Type, j.Status, j.ReportedAt, j.ReportedBy, j.Description,
+            j.AssignedTo, j.StartedAt, j.CompletedAt, j.Resolution, j.Cost,
+            j.Impact, j.Urgency, j.Priority, j.ProblemType, j.Deadline, slaBreached);
+    }
+
     internal static AssetDto ToDto(Asset a, DateOnly today)
     {
         return new AssetDto(
-            a.Id, a.AssetTag, a.Name, a.Category,
+            a.Id, a.AssetTag, a.Name, a.Category, a.Criticality,
             a.Model, a.SerialNumber, a.Manufacturer,
             a.WarehouseId, a.Warehouse?.Name,
             a.FacilityId, a.Facility?.Name, a.LocationNote,
+            a.Supplier, a.PoNumber, a.PoDate,
+            a.InvoiceNumber, a.InvoiceDate, a.InstallationDate,
             a.PurchaseDate, a.PurchaseCost, a.WarrantyUntil,
+            a.CalibrationDate, a.CalibrationDueDate,
             a.Status, a.Condition, a.Notes,
             a.Jobs.Count(j => j.Status == MaintenanceJobStatus.Open || j.Status == MaintenanceJobStatus.InProgress),
             a.Schedules.Count(s => s.IsActive && s.NextDueDate < today),
             a.Schedules.OrderBy(s => s.NextDueDate).Select(s => new AssetScheduleDto(
                 s.Id, s.TaskDescription, s.FrequencyDays, s.LastServiceDate, s.NextDueDate, s.IsActive,
                 s.NextDueDate.DayNumber - today.DayNumber)).ToList(),
-            a.Jobs.OrderByDescending(j => j.ReportedAt).Select(j => new AssetJobDto(
-                j.Id, j.JobNumber, j.Type, j.Status, j.ReportedAt, j.ReportedBy, j.Description,
-                j.AssignedTo, j.StartedAt, j.CompletedAt, j.Resolution, j.Cost)).ToList(),
+            a.Jobs.OrderByDescending(j => j.ReportedAt).Select(JobToDto).ToList(),
             a.AmcContracts.OrderByDescending(c => c.EndDate).Select(c => new AssetAmcDto(
-                c.Id, c.ContractNumber, c.VendorName, c.StartDate, c.EndDate, c.AnnualCost, c.Coverage, c.Status,
+                c.Id, c.ContractNumber, c.ContractType, c.VendorName, c.StartDate, c.EndDate, c.AnnualCost, c.Coverage, c.Status,
                 c.EndDate.DayNumber - today.DayNumber)).ToList());
     }
 }

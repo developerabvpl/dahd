@@ -41,6 +41,36 @@
 </div>
 
 <div class="card">
+  <h3 style="margin-top:0">Calibration due <small style="color:#6b7d90; font-weight:normal">(≤ 60 days + overdue)</small></h3>
+  @if (loading()) {
+    <p>Loading...</p>
+  } @else if (calibration().length === 0) {
+    <p>No calibrations due or overdue. 🎉</p>
+  } @else {
+    <table>
+      <thead>
+        <tr><th>Asset</th><th>Class</th><th>Last Calibrated</th><th>Due</th><th>Location</th><th>State</th></tr>
+      </thead>
+      <tbody>
+        @for (c of calibration(); track c.assetId) {
+          <tr>
+            <td><strong>{{ c.assetTag }}</strong> — {{ c.assetName }}</td>
+            <td><span class="badge">{{ c.criticality }}</span></td>
+            <td>{{ c.calibrationDate || '—' }}</td>
+            <td>{{ c.calibrationDueDate }}</td>
+            <td>{{ c.locationName }}</td>
+            <td>
+              @if (c.daysToDue < 0) { <span class="badge bad">overdue {{ -c.daysToDue }}d</span> }
+              @else { <span class="badge {{ dueCls(c.daysToDue) }}">due in {{ c.daysToDue }}d</span> }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>
+
+<div class="card">
   <h3 style="margin-top:0; display:flex; justify-content:space-between; align-items:center">
     Job board
     <span>
@@ -57,15 +87,22 @@
   } @else {
     <table>
       <thead>
-        <tr><th>Job</th><th>Type</th><th>Status</th><th>Reported</th><th>Description</th><th>Action</th></tr>
+        <tr><th>Job</th><th>Type</th><th>Priority</th><th>Status</th><th>Reported</th><th>SLA deadline</th><th>Description</th><th>Action</th></tr>
       </thead>
       <tbody>
         @for (j of jobs(); track j.id) {
           <tr>
             <td>{{ j.jobNumber }}</td>
             <td><span class="badge">{{ j.type }}</span></td>
+            <td>@if (j.priority) { <span class="badge {{ priorityCls(j.priority) }}">{{ j.priority }}</span> } @else { — }</td>
             <td><span class="badge {{ jobStatusCls(j.status) }}">{{ j.status }}</span></td>
             <td>{{ j.reportedAt | date:'short' }}</td>
+            <td>
+              @if (j.deadline) {
+                {{ j.deadline | date:'short' }}
+                @if (j.slaBreached) { <span class="badge bad">breached</span> }
+              } @else { — }
+            </td>
             <td>
               {{ j.description }}
               @if (j.resolution) { <br><small style="color:#065f46">✓ {{ j.resolution }} @if (j.cost) { (₹{{ j.cost | number }}) }</small> }

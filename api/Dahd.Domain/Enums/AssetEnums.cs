@@ -52,3 +52,56 @@ public enum AmcStatus
     Expired = 2,
     Cancelled = 3
 }
+
+/// <summary>Maintenance-contract kind. AMC = labour only; CMC = comprehensive, includes spare parts.</summary>
+public enum MaintenanceContractType
+{
+    Amc = 1,
+    Cmc = 2
+}
+
+/// <summary>Asset criticality class (Work121 "Category A/B/C") — drives incident prioritisation.</summary>
+public enum AssetCriticality
+{
+    A = 1, // mission-critical: failure halts operations
+    B = 2, // important: degraded operation
+    C = 3  // routine: low operational impact
+}
+
+/// <summary>ITIL incident impact — how much of the operation is affected.</summary>
+public enum IncidentImpact
+{
+    Low = 1,
+    Medium = 2,
+    High = 3
+}
+
+/// <summary>ITIL incident urgency — how quickly resolution is needed.</summary>
+public enum IncidentUrgency
+{
+    Low = 1,
+    Medium = 2,
+    High = 3
+}
+
+/// <summary>Derived from Impact × Urgency; sets the SLA deadline.</summary>
+public enum IncidentPriority
+{
+    Low = 1,
+    Medium = 2,
+    High = 3,
+    Critical = 4
+}
+
+/// <summary>Coarse problem classification for a breakdown/incident.</summary>
+public enum IncidentProblemType
+{
+    NotPoweringOn = 1,
+    ErraticReadings = 2,
+    PhysicalDamage = 3,
+    Overheating = 4,
+    Leakage = 5,
+    Consumable = 6,
+    SoftwareOrControl = 7,
+    Other = 99
+}

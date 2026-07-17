@@ -45,9 +45,7 @@ public class MaintenanceController(DahdDbContext db, IAuditLogger audit, ICurren
         if (status.HasValue) q = q.Where(j => j.Status == status);
         if (type.HasValue) q = q.Where(j => j.Type == type);
         var rows = await q.OrderByDescending(j => j.ReportedAt).Take(500).ToListAsync(ct);
-        return Ok(rows.Select(j => new AssetJobDto(
-            j.Id, j.JobNumber, j.Type, j.Status, j.ReportedAt, j.ReportedBy, j.Description,
-            j.AssignedTo, j.StartedAt, j.CompletedAt, j.Resolution, j.Cost)).ToList());
+        return Ok(rows.Select(AssetsController.JobToDto).ToList());
     }
 
     [HttpPost("assets/{assetId:guid}/breakdown")]
@@ -58,24 +56,41 @@ public class MaintenanceController(DahdDbContext db, IAuditLogger audit, ICurren
         if (asset is null) return NotFound();
         if (string.IsNullOrWhiteSpace(req.Description)) return BadRequest("Description is required.");
 
+        // ITIL triage: Impact × Urgency → Priority → SLA deadline. Impact defaults
+        // from the asset's criticality (A→High, B→Medium, C→Low) when not supplied.
+        var impact = req.Impact ?? asset.Criticality switch
+        {
+            AssetCriticality.A => IncidentImpact.High,
+            AssetCriticality.C => IncidentImpact.Low,
+            _ => IncidentImpact.Medium
+        };
+        var urgency = req.Urgency ?? IncidentUrgency.Medium;
+        var priority = IncidentPolicy.Prioritise(impact, urgency);
+        var reportedAt = DateTime.UtcNow;
+
         var job = new MaintenanceJob
         {
             AssetId = assetId,
-            JobNumber = $"BRK-{DateTime.UtcNow:yyyyMMddHHmmss}",
+            JobNumber = $"BRK-{reportedAt:yyyyMMddHHmmss}",
             Type = MaintenanceJobType.Breakdown,
             Status = MaintenanceJobStatus.Open,
-            ReportedAt = DateTime.UtcNow,
+            ReportedAt = reportedAt,
             ReportedBy = current.Username,
             Description = req.Description,
-            AssignedTo = req.AssignedTo
+            AssignedTo = req.AssignedTo,
+            Impact = impact,
+            Urgency = urgency,
+            Priority = priority,
+            ProblemType = req.ProblemType,
+            Deadline = IncidentPolicy.Deadline(reportedAt, priority)
         };
         db.MaintenanceJobs.Add(job);
         asset.Status = AssetStatus.BreakdownReported;
         await db.SaveChangesAsync(ct);
 
         await audit.LogAsync(nameof(MaintenanceJob), job.Id, "LogBreakdown",
-            after: new { job.JobNumber, asset.AssetTag, req.Description },
-            summary: $"Breakdown {job.JobNumber} logged for {asset.AssetTag}", ct: ct);
+            after: new { job.JobNumber, asset.AssetTag, req.Description, Priority = priority.ToString() },
+            summary: $"Breakdown {job.JobNumber} ({priority}) logged for {asset.AssetTag}", ct: ct);
         return Ok(ToDto(job));
     }
 
@@ -155,7 +170,26 @@ public class MaintenanceController(DahdDbContext db, IAuditLogger audit, ICurren
         return Ok(ToDto(job));
     }
 
-    private static AssetJobDto ToDto(MaintenanceJob j) => new(
-        j.Id, j.JobNumber, j.Type, j.Status, j.ReportedAt, j.ReportedBy, j.Description,
-        j.AssignedTo, j.StartedAt, j.CompletedAt, j.Resolution, j.Cost);
+    /// <summary>Assets whose calibration is due within the window (default 60 days), plus overdue.</summary>
+    [HttpGet("calibration-due")]
+    public async Task<ActionResult<IReadOnlyList<CalibrationDueRow>>> CalibrationDue(
+        [FromQuery] int withinDays = 60, CancellationToken ct = default)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var cutoff = today.AddDays(Math.Clamp(withinDays, 1, 365));
+
+        var rows = await db.Assets.AsNoTracking()
+            .Include(a => a.Warehouse).Include(a => a.Facility)
+            .Where(a => a.CalibrationDueDate != null && a.CalibrationDueDate <= cutoff)
+            .OrderBy(a => a.CalibrationDueDate)
+            .ToListAsync(ct);
+
+        return Ok(rows.Select(a => new CalibrationDueRow(
+            a.Id, a.AssetTag, a.Name, a.Category, a.Criticality,
+            a.CalibrationDate, a.CalibrationDueDate!.Value,
+            a.CalibrationDueDate!.Value.DayNumber - today.DayNumber,
+            a.Warehouse != null ? a.Warehouse.Name : a.Facility != null ? a.Facility.Name : a.LocationNote)).ToList());
+    }
+
+    private static AssetJobDto ToDto(MaintenanceJob j) => AssetsController.JobToDto(j);
 }

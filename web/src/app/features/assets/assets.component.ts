@@ -6,7 +6,8 @@ import { AuthService } from '../../core/auth/auth.service';
 import { AssetsService } from '../../core/assets/assets.service';
 import { ApiService } from '../../core/api.service';
 import {
-  ASSET_CATEGORIES, ASSET_STATUSES, Asset, AssetCategory, AssetKpi, AssetStatus,
+  ASSET_CATEGORIES, ASSET_STATUSES, ASSET_CRITICALITIES, INCIDENT_LEVELS, INCIDENT_PROBLEM_TYPES,
+  Asset, AssetCategory, AssetKpi, AssetStatus, IncidentPriority, IncidentProblemType, IncidentUrgency,
   CreateAmcRequest, CreateAssetRequest, CreateScheduleRequest
 } from '../../core/assets/assets.models';
 import { Facility, Warehouse } from '../../core/models';
@@ -32,9 +33,14 @@ export class AssetsComponent implements OnInit, OnDestroy {
   readonly statusFilter = signal<AssetStatus | ''>('');
   readonly categoryFilter = signal<AssetCategory | ''>('');
   readonly breakdownInput = signal<Record<string, string>>({});
+  readonly breakdownUrgency = signal<Record<string, IncidentUrgency>>({});
+  readonly breakdownProblem = signal<Record<string, IncidentProblemType>>({});
 
   readonly categories = ASSET_CATEGORIES;
   readonly statuses = ASSET_STATUSES;
+  readonly criticalities = ASSET_CRITICALITIES;
+  readonly urgencyLevels = INCIDENT_LEVELS;
+  readonly problemTypes = INCIDENT_PROBLEM_TYPES;
 
   readonly warehouses = signal<Warehouse[]>([]);
   readonly facilities = signal<Facility[]>([]);
@@ -80,9 +86,12 @@ export class AssetsComponent implements OnInit, OnDestroy {
 
   blankAsset(): CreateAssetRequest {
     return {
-      assetTag: '', name: '', category: 'ColdChainEquipment', model: '', serialNumber: '',
+      assetTag: '', name: '', category: 'ColdChainEquipment', criticality: 'B', model: '', serialNumber: '',
       manufacturer: '', warehouseId: undefined, facilityId: undefined, locationNote: '',
+      supplier: '', poNumber: '', poDate: undefined, invoiceNumber: '', invoiceDate: undefined,
+      installationDate: undefined,
       purchaseDate: undefined, purchaseCost: undefined, warrantyUntil: undefined,
+      calibrationDate: undefined, calibrationDueDate: undefined,
       condition: 'New', notes: ''
     };
   }
@@ -90,7 +99,7 @@ export class AssetsComponent implements OnInit, OnDestroy {
   blankAmc(): CreateAmcRequest {
     const today = new Date().toISOString().slice(0, 10);
     const nextYear = new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10);
-    return { contractNumber: '', vendorName: '', startDate: today, endDate: nextYear, annualCost: 0, coverage: '' };
+    return { contractNumber: '', contractType: 'Amc', vendorName: '', startDate: today, endDate: nextYear, annualCost: 0, coverage: '' };
   }
 
   toggleCreate(): void {
@@ -157,12 +166,32 @@ export class AssetsComponent implements OnInit, OnDestroy {
   }
 
   setBreakdown(id: string, v: string): void { this.breakdownInput.update(m => ({ ...m, [id]: v })); }
+  setUrgency(id: string, v: IncidentUrgency): void { this.breakdownUrgency.update(m => ({ ...m, [id]: v })); }
+  setProblem(id: string, v: IncidentProblemType): void { this.breakdownProblem.update(m => ({ ...m, [id]: v })); }
 
   statusCls(s: AssetStatus): string {
     if (s === 'Active') return 'ok';
     if (s === 'UnderMaintenance') return 'warn';
     if (s === 'BreakdownReported') return 'bad';
     return '';
+  }
+
+  critCls(c: string): string {
+    if (c === 'A') return 'bad';
+    if (c === 'B') return 'warn';
+    return 'ok';
+  }
+
+  priorityCls(p?: IncidentPriority): string {
+    if (p === 'Critical' || p === 'High') return 'bad';
+    if (p === 'Medium') return 'warn';
+    return 'ok';
+  }
+
+  calibrationDays(a: Asset): number | null {
+    if (!a.calibrationDueDate) return null;
+    const due = new Date(a.calibrationDueDate + 'T00:00:00');
+    return Math.round((due.getTime() - Date.now()) / 86400000);
   }
 
   location(a: Asset): string {
@@ -174,10 +203,14 @@ export class AssetsComponent implements OnInit, OnDestroy {
     if (!desc) { this.error.set('Describe the breakdown first.'); return; }
     this.busyId.set(a.id);
     this.error.set(null); this.notice.set(null);
-    this.svc.logBreakdown(a.id, { description: desc })
+    this.svc.logBreakdown(a.id, {
+      description: desc,
+      urgency: this.breakdownUrgency()[a.id] ?? 'Medium',
+      problemType: this.breakdownProblem()[a.id]
+    })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: j => { this.busyId.set(null); this.notice.set(`Breakdown ${j.jobNumber} logged. See Maintenance to action it.`); this.load(); },
+        next: j => { this.busyId.set(null); this.notice.set(`Breakdown ${j.jobNumber} logged — ${j.priority} priority${j.deadline ? ', due ' + new Date(j.deadline).toLocaleString() : ''}. See Maintenance to action it.`); this.load(); },
         error: e => { this.busyId.set(null); this.error.set(e?.error?.title ?? e?.error ?? e?.message ?? 'Failed'); }
       });
   }

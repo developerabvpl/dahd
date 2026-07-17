@@ -17,23 +17,26 @@ public static class DahdSeeder
         // provider-specific migrations, so create the schema from the model.
         if (db.Database.IsSqlite())
         {
-            // EnsureCreated cannot ALTER an existing file when the model gains new
-            // tables. Sentinel = newest table in the model; if the file has tables
-            // but not the sentinel, rebuild the demo DB (it fully re-seeds below).
+            // EnsureCreated cannot ALTER an existing file when the model changes.
+            // Sentinels detect a stale demo DB and rebuild it (it fully re-seeds below):
+            //   - a newest-table check ("PurchaseOrders"), and
+            //   - a newest-column check ("Assets.Criticality") for column-only changes.
             const string sentinelTable = "PurchaseOrders";
             var conn = db.Database.GetDbConnection();
             await conn.OpenAsync(ct);
-            int totalTables, sentinel;
+            int totalTables, sentinel, sentinelColumn;
             await using (var cmd = conn.CreateCommand())
             {
                 cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table'";
                 totalTables = Convert.ToInt32(await cmd.ExecuteScalarAsync(ct));
                 cmd.CommandText = $"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{sentinelTable}'";
                 sentinel = Convert.ToInt32(await cmd.ExecuteScalarAsync(ct));
+                cmd.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Assets') WHERE name='Criticality'";
+                sentinelColumn = Convert.ToInt32(await cmd.ExecuteScalarAsync(ct));
             }
             await conn.CloseAsync();
 
-            if (totalTables > 0 && sentinel == 0)
+            if (totalTables > 0 && (sentinel == 0 || sentinelColumn == 0))
             {
                 await db.Database.EnsureDeletedAsync(ct); // demo DB — fully re-seeded
             }
@@ -162,32 +165,47 @@ public static class DahdSeeder
         var hospital = facilities.FirstOrDefault(f => f.Type == FacilityType.VeterinaryHospital);
         var mvu = facilities.FirstOrDefault(f => f.Type == FacilityType.MobileVeterinaryUnit);
 
+        // calDueMonths: months-from-today the calibration is due (negative = already
+        // overdue); null = not a calibrated instrument. Drives the calibration KPIs/report.
         Asset A(string tag, string name, AssetCategory cat, string model, string mfr,
-                Guid? whId, Guid? facId, int ageMonths, decimal cost, AssetCondition cond) => new()
+                Guid? whId, Guid? facId, int ageMonths, decimal cost, AssetCondition cond,
+                AssetCriticality crit, int? calDueMonths = null)
         {
-            AssetTag = tag, Name = name, Category = cat, Model = model, Manufacturer = mfr,
-            SerialNumber = $"SN-{tag}",
-            WarehouseId = whId, FacilityId = facId,
-            PurchaseDate = today.AddMonths(-ageMonths),
-            PurchaseCost = cost,
-            WarrantyUntil = today.AddMonths(-ageMonths).AddMonths(36),
-            Status = AssetStatus.Active, Condition = cond
-        };
+            var purchase = today.AddMonths(-ageMonths);
+            return new Asset
+            {
+                AssetTag = tag, Name = name, Category = cat, Criticality = crit,
+                Model = model, Manufacturer = mfr, SerialNumber = $"SN-{tag}",
+                WarehouseId = whId, FacilityId = facId,
+                Supplier = $"{mfr} Authorised Dealer",
+                PoNumber = $"AHD/PO/{purchase:yyyy}/{tag[4..]}",
+                PoDate = purchase.AddDays(-30),
+                InvoiceNumber = $"INV/{purchase:yyyy}/{tag[4..]}",
+                InvoiceDate = purchase.AddDays(-3),
+                InstallationDate = purchase.AddDays(7),
+                PurchaseDate = purchase,
+                PurchaseCost = cost,
+                WarrantyUntil = purchase.AddMonths(36),
+                CalibrationDueDate = calDueMonths is int m ? today.AddMonths(m) : null,
+                CalibrationDate = calDueMonths is int m2 ? today.AddMonths(m2).AddYears(-1) : null,
+                Status = AssetStatus.Active, Condition = cond
+            };
+        }
 
         var assets = new List<Asset>
         {
-            A("AST-ILR-001", "Ice-Lined Refrigerator (vaccine)", AssetCategory.ColdChainEquipment, "Vestfrost VLS-054", "Vestfrost", central?.Id, null, 14, 185000m, AssetCondition.Good),
-            A("AST-ILR-002", "Ice-Lined Refrigerator (vaccine)", AssetCategory.ColdChainEquipment, "Vestfrost VLS-054", "Vestfrost", central?.Id, null, 26, 185000m, AssetCondition.Fair),
-            A("AST-DF-001",  "Deep Freezer -20°C", AssetCategory.ColdChainEquipment, "Blue Star CF3-300", "Blue Star", central?.Id, null, 20, 95000m, AssetCondition.Good),
-            A("AST-USG-001", "Portable Ultrasound Scanner", AssetCategory.DiagnosticEquipment, "Mindray DP-10Vet", "Mindray", null, hospital?.Id, 8, 420000m, AssetCondition.New),
-            A("AST-MIC-001", "Binocular Microscope", AssetCategory.LabEquipment, "Olympus CX23", "Olympus", null, hospital?.Id, 30, 78000m, AssetCondition.Fair),
-            A("AST-ACL-001", "Autoclave 50L", AssetCategory.LabEquipment, "Equitron 7501", "Equitron", null, hospital?.Id, 40, 132000m, AssetCondition.Poor),
-            A("AST-AIG-001", "AI Gun Kit + LN2 Container 10L", AssetCategory.AiEquipment, "IMV Technologies", "IMV", central?.Id, null, 18, 64000m, AssetCondition.Good),
-            A("AST-LN2-001", "Liquid Nitrogen Container 35L", AssetCategory.AiEquipment, "IBP BA-35", "IBP", central?.Id, null, 22, 88000m, AssetCondition.Good),
-            A("AST-MVU-001", "MVU Vehicle (Bolero)", AssetCategory.Vehicle, "Mahindra Bolero", "Mahindra", null, mvu?.Id, 16, 985000m, AssetCondition.Good),
-            A("AST-XRY-001", "Portable X-Ray Unit", AssetCategory.DiagnosticEquipment, "Allengers MARS-15", "Allengers", null, hospital?.Id, 28, 540000m, AssetCondition.Fair),
-            A("AST-GEN-001", "Diesel Generator 15kVA", AssetCategory.Other, "Kirloskar KG1-15", "Kirloskar", central?.Id, null, 44, 310000m, AssetCondition.Fair),
-            A("AST-PC-001",  "Desktop PC (records)", AssetCategory.ItHardware, "HP ProDesk 400", "HP", central?.Id, null, 34, 48000m, AssetCondition.Fair)
+            A("AST-ILR-001", "Ice-Lined Refrigerator (vaccine)", AssetCategory.ColdChainEquipment, "Vestfrost VLS-054", "Vestfrost", central?.Id, null, 14, 185000m, AssetCondition.Good, AssetCriticality.A, calDueMonths: -2),
+            A("AST-ILR-002", "Ice-Lined Refrigerator (vaccine)", AssetCategory.ColdChainEquipment, "Vestfrost VLS-054", "Vestfrost", central?.Id, null, 26, 185000m, AssetCondition.Fair, AssetCriticality.A),
+            A("AST-DF-001",  "Deep Freezer -20°C", AssetCategory.ColdChainEquipment, "Blue Star CF3-300", "Blue Star", central?.Id, null, 20, 95000m, AssetCondition.Good, AssetCriticality.A, calDueMonths: -4),
+            A("AST-USG-001", "Portable Ultrasound Scanner", AssetCategory.DiagnosticEquipment, "Mindray DP-10Vet", "Mindray", null, hospital?.Id, 8, 420000m, AssetCondition.New, AssetCriticality.B, calDueMonths: 5),
+            A("AST-MIC-001", "Binocular Microscope", AssetCategory.LabEquipment, "Olympus CX23", "Olympus", null, hospital?.Id, 30, 78000m, AssetCondition.Fair, AssetCriticality.C),
+            A("AST-ACL-001", "Autoclave 50L", AssetCategory.LabEquipment, "Equitron 7501", "Equitron", null, hospital?.Id, 40, 132000m, AssetCondition.Poor, AssetCriticality.B, calDueMonths: 1),
+            A("AST-AIG-001", "AI Gun Kit + LN2 Container 10L", AssetCategory.AiEquipment, "IMV Technologies", "IMV", central?.Id, null, 18, 64000m, AssetCondition.Good, AssetCriticality.B),
+            A("AST-LN2-001", "Liquid Nitrogen Container 35L", AssetCategory.AiEquipment, "IBP BA-35", "IBP", central?.Id, null, 22, 88000m, AssetCondition.Good, AssetCriticality.B),
+            A("AST-MVU-001", "MVU Vehicle (Bolero)", AssetCategory.Vehicle, "Mahindra Bolero", "Mahindra", null, mvu?.Id, 16, 985000m, AssetCondition.Good, AssetCriticality.A),
+            A("AST-XRY-001", "Portable X-Ray Unit", AssetCategory.DiagnosticEquipment, "Allengers MARS-15", "Allengers", null, hospital?.Id, 28, 540000m, AssetCondition.Fair, AssetCriticality.B, calDueMonths: -1),
+            A("AST-GEN-001", "Diesel Generator 15kVA", AssetCategory.Other, "Kirloskar KG1-15", "Kirloskar", central?.Id, null, 44, 310000m, AssetCondition.Fair, AssetCriticality.A),
+            A("AST-PC-001",  "Desktop PC (records)", AssetCategory.ItHardware, "HP ProDesk 400", "HP", central?.Id, null, 34, 48000m, AssetCondition.Fair, AssetCriticality.C)
         };
         db.Assets.AddRange(assets);
         await db.SaveChangesAsync(ct);
@@ -213,42 +231,49 @@ public static class DahdSeeder
         Sched("AST-GEN-001", "Quarterly oil change + load test", 90, 2);                   // upcoming
         await db.SaveChangesAsync(ct);
 
-        // Open breakdowns
-        void Breakdown(string tag, string desc, string assignedTo)
+        // Open breakdowns — with ITIL triage (Impact × Urgency → Priority → SLA deadline).
+        void Breakdown(string tag, string desc, string assignedTo,
+            IncidentImpact impact, IncidentUrgency urgency, IncidentProblemType problem)
         {
             var a = assets.First(x => x.AssetTag == tag);
+            var reportedAt = DateTime.UtcNow.AddDays(-3);
+            var priority = IncidentPolicy.Prioritise(impact, urgency);
             db.MaintenanceJobs.Add(new MaintenanceJob
             {
                 AssetId = a.Id,
                 JobNumber = $"BRK-SEED-{tag}",
                 Type = MaintenanceJobType.Breakdown,
                 Status = MaintenanceJobStatus.Open,
-                ReportedAt = DateTime.UtcNow.AddDays(-3),
+                ReportedAt = reportedAt,
                 ReportedBy = "wh",
                 Description = desc,
-                AssignedTo = assignedTo
+                AssignedTo = assignedTo,
+                Impact = impact, Urgency = urgency, Priority = priority, ProblemType = problem,
+                Deadline = IncidentPolicy.Deadline(reportedAt, priority)   // 3 days ago → SLA already breached
             });
             a.Status = AssetStatus.BreakdownReported;
         }
-        Breakdown("AST-ACL-001", "Autoclave not reaching set pressure; safety valve hissing.", "Equitron Service");
-        Breakdown("AST-XRY-001", "X-ray exposure inconsistent; suspect HT cable fault.", "Allengers AMC");
+        Breakdown("AST-ACL-001", "Autoclave not reaching set pressure; safety valve hissing.", "Equitron Service",
+            IncidentImpact.Medium, IncidentUrgency.High, IncidentProblemType.Leakage);
+        Breakdown("AST-XRY-001", "X-ray exposure inconsistent; suspect HT cable fault.", "Allengers AMC",
+            IncidentImpact.High, IncidentUrgency.High, IncidentProblemType.ErraticReadings);   // → Critical
         await db.SaveChangesAsync(ct);
 
-        // AMC contracts
-        void Amc(string tag, string num, string vendor, decimal cost, string coverage, int startMonthsAgo)
+        // AMC / CMC contracts
+        void Contract(string tag, string num, MaintenanceContractType type, string vendor, decimal cost, string coverage, int startMonthsAgo)
         {
             var a = assets.First(x => x.AssetTag == tag);
             var start = today.AddMonths(-startMonthsAgo);
             db.AmcContracts.Add(new AmcContract
             {
-                AssetId = a.Id, ContractNumber = num, VendorName = vendor,
+                AssetId = a.Id, ContractNumber = num, ContractType = type, VendorName = vendor,
                 StartDate = start, EndDate = start.AddYears(1), AnnualCost = cost,
                 Coverage = coverage, Status = AmcStatus.Active
             });
         }
-        Amc("AST-USG-001", "AMC-USG-001", "Mindray India", 28000m, "Comprehensive incl. probe", 2);
-        Amc("AST-XRY-001", "AMC-XRY-001", "Allengers Medical", 45000m, "Comprehensive + radiation safety", 11); // expiring soon
-        Amc("AST-MVU-001", "AMC-MVU-001", "Mahindra First Choice", 22000m, "Labour + periodic service", 4);
+        Contract("AST-USG-001", "CMC-USG-001", MaintenanceContractType.Cmc, "Mindray India", 28000m, "Comprehensive incl. probe (with parts)", 2);
+        Contract("AST-XRY-001", "CMC-XRY-001", MaintenanceContractType.Cmc, "Allengers Medical", 45000m, "Comprehensive + radiation safety (with parts)", 11); // expiring soon
+        Contract("AST-MVU-001", "AMC-MVU-001", MaintenanceContractType.Amc, "Mahindra First Choice", 22000m, "Labour + periodic service (no parts)", 4);
         await db.SaveChangesAsync(ct);
     }
 

@@ -339,19 +339,24 @@ public record AssetJobDto(
     Guid Id, string JobNumber, MaintenanceJobType Type, MaintenanceJobStatus Status,
     DateTime ReportedAt, string? ReportedBy, string Description,
     string? AssignedTo, DateTime? StartedAt, DateTime? CompletedAt,
-    string? Resolution, decimal? Cost);
+    string? Resolution, decimal? Cost,
+    IncidentImpact? Impact, IncidentUrgency? Urgency, IncidentPriority? Priority,
+    IncidentProblemType? ProblemType, DateTime? Deadline, bool SlaBreached);
 
 public record AssetAmcDto(
-    Guid Id, string ContractNumber, string VendorName,
+    Guid Id, string ContractNumber, MaintenanceContractType ContractType, string VendorName,
     DateOnly StartDate, DateOnly EndDate, decimal AnnualCost,
     string? Coverage, AmcStatus Status, int DaysToExpiry);
 
 public record AssetDto(
-    Guid Id, string AssetTag, string Name, AssetCategory Category,
+    Guid Id, string AssetTag, string Name, AssetCategory Category, AssetCriticality Criticality,
     string? Model, string? SerialNumber, string? Manufacturer,
     Guid? WarehouseId, string? WarehouseName,
     Guid? FacilityId, string? FacilityName, string? LocationNote,
+    string? Supplier, string? PoNumber, DateOnly? PoDate,
+    string? InvoiceNumber, DateOnly? InvoiceDate, DateOnly? InstallationDate,
     DateOnly? PurchaseDate, decimal? PurchaseCost, DateOnly? WarrantyUntil,
+    DateOnly? CalibrationDate, DateOnly? CalibrationDueDate,
     AssetStatus Status, AssetCondition Condition, string? Notes,
     int OpenJobs, int OverdueSchedules,
     IReadOnlyList<AssetScheduleDto> Schedules,
@@ -359,24 +364,29 @@ public record AssetDto(
     IReadOnlyList<AssetAmcDto> AmcContracts);
 
 public record CreateAssetRequest(
-    string AssetTag, string Name, AssetCategory Category,
+    string AssetTag, string Name, AssetCategory Category, AssetCriticality Criticality,
     string? Model, string? SerialNumber, string? Manufacturer,
     Guid? WarehouseId, Guid? FacilityId, string? LocationNote,
+    string? Supplier, string? PoNumber, DateOnly? PoDate,
+    string? InvoiceNumber, DateOnly? InvoiceDate, DateOnly? InstallationDate,
     DateOnly? PurchaseDate, decimal? PurchaseCost, DateOnly? WarrantyUntil,
+    DateOnly? CalibrationDate, DateOnly? CalibrationDueDate,
     AssetCondition Condition, string? Notes);
 
 public record UpdateAssetStatusRequest(AssetStatus Status, AssetCondition? Condition, string? Notes);
 
 public record CreateScheduleRequest(string TaskDescription, int FrequencyDays, DateOnly? LastServiceDate);
 
-public record LogBreakdownRequest(string Description, string? AssignedTo);
+public record LogBreakdownRequest(
+    string Description, string? AssignedTo,
+    IncidentImpact? Impact, IncidentUrgency? Urgency, IncidentProblemType? ProblemType);
 
 public record CreatePpmJobRequest(Guid? ScheduleId, string Description, string? AssignedTo);
 
 public record CompleteJobRequest(string Resolution, decimal? Cost);
 
 public record CreateAmcRequest(
-    string ContractNumber, string VendorName,
+    string ContractNumber, MaintenanceContractType ContractType, string VendorName,
     DateOnly StartDate, DateOnly EndDate, decimal AnnualCost, string? Coverage);
 
 public record MaintenanceDueRow(
@@ -384,6 +394,13 @@ public record MaintenanceDueRow(
     Guid ScheduleId, string TaskDescription, DateOnly NextDueDate, int DaysToDue,
     string? LocationName);
 
+public record CalibrationDueRow(
+    Guid AssetId, string AssetTag, string AssetName, AssetCategory Category, AssetCriticality Criticality,
+    DateOnly? CalibrationDate, DateOnly CalibrationDueDate, int DaysToDue, string? LocationName);
+
 public record AssetKpiDto(
     int TotalAssets, int ActiveAssets, int UnderMaintenance, int InBreakdown,
-    int Condemned, int OpenJobs, int OverduePpm, int AmcExpiring60Days);
+    int Condemned, int OpenJobs, int OverduePpm, int AmcExpiring60Days,
+    int WarrantyExpiring60Days, int WarrantyExpired,
+    int CalibrationDue60Days, int CalibrationOverdue,
+    int OpenCriticalIncidents, int SlaBreachedIncidents, decimal AmcAnnualCostTotal);

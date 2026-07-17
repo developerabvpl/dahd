@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Subject, forkJoin, takeUntil } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { AssetsService } from '../../core/assets/assets.service';
-import { AssetJob, MaintenanceDueRow, MaintenanceJobStatus } from '../../core/assets/assets.models';
+import { AssetJob, CalibrationDueRow, IncidentPriority, MaintenanceDueRow, MaintenanceJobStatus } from '../../core/assets/assets.models';
 
 @Component({
   selector: 'app-maintenance',
@@ -18,6 +18,7 @@ export class MaintenanceComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
 
   readonly due = signal<MaintenanceDueRow[]>([]);
+  readonly calibration = signal<CalibrationDueRow[]>([]);
   readonly jobs = signal<AssetJob[]>([]);
   readonly loading = signal(true);
   readonly busyId = signal<string | null>(null);
@@ -37,10 +38,11 @@ export class MaintenanceComponent implements OnInit, OnDestroy {
     this.loading.set(true);
     forkJoin({
       due: this.svc.due(this.withinDays()),
+      calibration: this.svc.calibrationDue(60),
       jobs: this.svc.jobs({ status: this.jobStatusFilter() || undefined })
     }).pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: ({ due, jobs }) => { this.due.set(due); this.jobs.set(jobs); this.loading.set(false); },
+        next: ({ due, calibration, jobs }) => { this.due.set(due); this.calibration.set(calibration); this.jobs.set(jobs); this.loading.set(false); },
         error: () => this.loading.set(false)
       });
   }
@@ -59,6 +61,12 @@ export class MaintenanceComponent implements OnInit, OnDestroy {
     if (s === 'Open') return 'bad';
     if (s === 'InProgress') return 'warn';
     return '';
+  }
+
+  priorityCls(p?: IncidentPriority): string {
+    if (p === 'Critical' || p === 'High') return 'bad';
+    if (p === 'Medium') return 'warn';
+    return 'ok';
   }
 
   start(j: AssetJob): void {

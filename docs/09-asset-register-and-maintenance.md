@@ -3,6 +3,15 @@
 > Added after the research docs. Clarifies how "assets" are handled in the build,
 > because [02](02-procurement-drugs-vaccines-assets.md) frames assets as a
 > *procurement lane* while this module adds a *register + upkeep* capability.
+>
+> **Update (Jul 2026):** benchmarked against the FSDA **Work121** production system
+> ([spec](10-work121-asset-maintenance-spec.md), [gap analysis](11-asset-maintenance-gap-analysis.md))
+> and enriched with: **criticality class A/B/C**, procurement provenance
+> (supplier / PO / invoice / installation date), **first-class calibration**
+> (date + due, `/api/maintenance/calibration-due`), **AMC vs CMC** contract type,
+> and **ITIL incidents** (Impact × Urgency → Priority → SLA deadline, with
+> SLA-breach flags). New KPIs: warranty & calibration expiring/expired, critical &
+> SLA-breached incidents, AMC/CMC annual-cost total.
 
 ## Two meanings of "asset" — both covered
 
