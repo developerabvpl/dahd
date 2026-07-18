@@ -218,3 +218,24 @@ form.inline {
     &:disabled { opacity: 0.6; cursor: not-allowed; }
   }
 }
+
+/* Network Map info-window (Leaflet popup) — content is outside Angular scope */
+.dahd-info .leaflet-popup-content-wrapper { border-radius: 8px; }
+.dahd-info .leaflet-popup-content {
+  margin: 0.7rem 0.85rem;
+  font: 400 0.85rem/1.35 "Segoe UI", system-ui, sans-serif;
+  color: #1e293b;
+}
+.dahd-info table { border-collapse: collapse; width: 100%; margin-bottom: 0.2rem; }
+.dahd-info th {
+  text-align: left; font-weight: 600; color: #6b7d90;
+  border-bottom: 1px solid #e2e8f0; padding: 2px 5px; white-space: nowrap;
+}
+.dahd-info td { padding: 2px 5px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+.dahd-info .badge {
+  display: inline-block; padding: 0 6px; border-radius: 10px; font-size: 0.68rem;
+  font-weight: 600; background: #e2e8f0; color: #334155; line-height: 1.5;
+}
+.dahd-info .badge.ok  { background: #dcfce7; color: #166534; }
+.dahd-info .badge.warn{ background: #fef3c7; color: #92400e; }
+.dahd-info .badge.bad { background: #fee2e2; color: #991b1b; }
