@@ -18,6 +18,7 @@ export const routes: Routes = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: 'dashboard',   loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent) },
+      { path: 'map',         loadComponent: () => import('./features/map/map.component').then(m => m.MapComponent) },
       { path: 'drugs',       loadComponent: () => import('./features/drugs/drugs.component').then(m => m.DrugsComponent) },
       { path: 'warehouses',  loadComponent: () => import('./features/warehouses/warehouses.component').then(m => m.WarehousesComponent) },
       { path: 'facilities',  loadComponent: () => import('./features/facilities/facilities.component').then(m => m.FacilitiesComponent) },

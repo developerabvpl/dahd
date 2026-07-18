@@ -20,6 +20,9 @@
             "outputPath": "dist/web",
             "index": "src/index.html",
             "browser": "src/main.ts",
+            "allowedCommonJsDependencies": [
+              "leaflet"
+            ],
             "polyfills": [
               "zone.js"
             ],
@@ -32,6 +35,7 @@
               }
             ],
             "styles": [
+              "node_modules/leaflet/dist/leaflet.css",
               "src/styles.scss"
             ],
             "scripts": []
