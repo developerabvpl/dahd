@@ -67,6 +67,25 @@ export class MapService {
     return this.http.get<MapWarehouse[]>(`${environment.apiUrl}/map/warehouses`);
   }
 
+  /** True UP district boundary polygons (GADM, filtered + simplified), served as an app asset. */
+  boundaries(): Observable<any> {
+    return this.http.get<any>('up-districts.geojson');
+  }
+
+  /**
+   * Canonical district key for joining GADM names ↔ our/backend names
+   * (e.g. GADM "Allahabad" → "prayagraj", "Faizabad" → "ayodhya").
+   */
+  static canon(name?: string | null): string {
+    const k = (name ?? '').toLowerCase().replace(/[^a-z]/g, '');
+    const alias: Record<string, string> = {
+      allahabad: 'prayagraj', faizabad: 'ayodhya', kanpur: 'kanpurnagar',
+      badaun: 'budaun', jyotibaphulenagar: 'amroha', gautambuddhanagar: 'gautambuddhnagar',
+      santravidasnagar: 'bhadohi', barabanki: 'barabanki'
+    };
+    return alias[k] ?? k;
+  }
+
   /** Place a real warehouse on the map from its district (or a district name inside its title). */
   geocode(district?: string | null, name?: string | null): { lat: number; lng: number } | null {
     const hay = `${district ?? ''} ${name ?? ''}`.toLowerCase();
