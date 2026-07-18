@@ -67,14 +67,15 @@ export class MapService {
     return this.http.get<MapWarehouse[]>(`${environment.apiUrl}/map/warehouses`);
   }
 
-  /** True UP district boundary polygons (GADM, filtered + simplified), served as an app asset. */
+  /** True UP district boundary polygons — all 75 current districts, served as an app asset. */
   boundaries(): Observable<any> {
     return this.http.get<any>('up-districts.geojson');
   }
 
   /**
-   * Canonical district key for joining GADM names ↔ our/backend names
-   * (e.g. GADM "Allahabad" → "prayagraj", "Faizabad" → "ayodhya").
+   * Canonical district key for joining boundary names ↔ our/backend names.
+   * The current 75-district set already uses modern names (Prayagraj, Ayodhya,
+   * Amroha…); the legacy aliases are kept so old backend names still match.
    */
   static canon(name?: string | null): string {
     const k = (name ?? '').toLowerCase().replace(/[^a-z]/g, '');
