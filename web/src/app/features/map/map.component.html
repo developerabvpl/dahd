@@ -8,21 +8,29 @@
   </div>
 </div>
 
-<div class="card" style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap; padding:.6rem .9rem">
-  <button (click)="toggleStores()" [class.primary]="showStores()">
-    ● Stores ({{ net.stores.length }})
-  </button>
-  <button (click)="toggleField()" [class.primary]="showField()">
-    ◆ Field force ({{ net.fieldForce.length }})
-  </button>
-  <span style="display:flex; gap:.4rem; align-items:center"><span style="width:12px;height:12px;border-radius:50%;background:#1d4ed8;display:inline-block"></span> District store</span>
-  <span style="display:flex; gap:.4rem; align-items:center"><span style="width:12px;height:12px;border-radius:50%;background:#0891b2;display:inline-block"></span> Block store</span>
-  <span style="display:flex; gap:.4rem; align-items:center"><span style="width:12px;height:12px;border-radius:50%;background:#16a34a;display:inline-block"></span> Field force</span>
-  <span style="display:flex; gap:.4rem; align-items:center"><span style="width:12px;height:12px;border-radius:50%;background:#dc2626;display:inline-block"></span> Cold-chain alarm</span>
-  <span style="margin-left:auto">
+<div class="card" style="display:flex; gap:.7rem; align-items:center; flex-wrap:wrap; padding:.6rem .9rem">
+  <button (click)="toggleStores()" [class.primary]="showStores()">● Stores ({{ net.stores.length }})</button>
+  <button (click)="toggleField()" [class.primary]="showField()">◆ Field force ({{ net.fieldForce.length }})</button>
+  <button (click)="toggleLive()" [class.primary]="showLive()">★ Live warehouses{{ liveCount() !== null ? ' (' + liveCount() + ')' : '' }}</button>
+  <button (click)="toggleShading()" [class.primary]="showShading()">▨ District shading</button>
+  <span style="margin-left:auto; display:flex; gap:.7rem; flex-wrap:wrap; align-items:center">
     @if (storeAlarms() > 0) { <span class="badge bad">{{ storeAlarms() }} stores in alarm</span> }
     @if (fieldAlerts() > 0) { <span class="badge bad">{{ fieldAlerts() }} carriers breached</span> }
+    @if (liveError()) { <span class="badge warn">{{ liveError() }}</span> }
   </span>
+</div>
+
+<div class="card" style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap; padding:.45rem .9rem; font-size:.82rem">
+  <strong style="color:#6b7d90">Markers:</strong>
+  <span style="display:flex; gap:.35rem; align-items:center"><span style="width:12px;height:12px;border-radius:50%;background:#1d4ed8;display:inline-block"></span> District store</span>
+  <span style="display:flex; gap:.35rem; align-items:center"><span style="width:12px;height:12px;border-radius:50%;background:#0891b2;display:inline-block"></span> Block store</span>
+  <span style="display:flex; gap:.35rem; align-items:center"><span style="width:12px;height:12px;border-radius:50%;background:#16a34a;display:inline-block"></span> Field force</span>
+  <span style="display:flex; gap:.35rem; align-items:center"><span style="width:12px;height:12px;border-radius:50%;background:#d97706;display:inline-block"></span> ★ Live warehouse</span>
+  <span style="display:flex; gap:.35rem; align-items:center"><span style="width:12px;height:12px;border-radius:50%;background:#dc2626;display:inline-block"></span> Cold-chain alarm</span>
+  <strong style="color:#6b7d90; margin-left:1rem">Shading (cold-chain health):</strong>
+  <span style="display:flex; gap:.35rem; align-items:center"><span style="width:14px;height:12px;background:#16a34a;opacity:.5;display:inline-block"></span> healthy</span>
+  <span style="display:flex; gap:.35rem; align-items:center"><span style="width:14px;height:12px;background:#f59e0b;opacity:.5;display:inline-block"></span> watch</span>
+  <span style="display:flex; gap:.35rem; align-items:center"><span style="width:14px;height:12px;background:#dc2626;opacity:.5;display:inline-block"></span> alarm</span>
 </div>
 
 <div style="display:flex; gap:1rem; align-items:stretch; flex-wrap:wrap">
@@ -34,12 +42,97 @@
   <!-- DETAIL PANEL -->
   <div style="flex:0 1 460px; min-width:320px; max-height:calc(72vh + 3.4rem); overflow:auto">
 
-    @if (!selectedStore() && !selectedField()) {
+    @if (!selectedStore() && !selectedField() && !selectedLive()) {
       <div class="card" style="height:100%; display:flex; align-items:center; justify-content:center; text-align:center; color:#6b7d90">
         <div>
           <div style="font-size:2.2rem">🗺️</div>
-          <p><strong>Click any marker</strong><br>Stores show cold-chain units &amp; vaccine stock;<br>field force show toolbox sensor data.</p>
+          <p><strong>Click any marker</strong><br>
+            ★ Live warehouses show real backend stock;<br>
+            demo stores show cold-chain units &amp; vaccine stock;<br>
+            field force show toolbox sensor data.</p>
         </div>
+      </div>
+    }
+
+    <!-- ============ LIVE WAREHOUSE DETAIL (real backend data) ============ -->
+    @if (selectedLive(); as w) {
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:.5rem">
+          <div>
+            <h3 style="margin:0">{{ w.name }}</h3>
+            <div style="color:#6b7d90; font-size:.85rem">{{ w.code }} · {{ w.district || w.division || 'Uttar Pradesh' }}</div>
+          </div>
+          <button (click)="closePanel()">✕</button>
+        </div>
+        <div style="margin:.5rem 0; display:flex; gap:.4rem; flex-wrap:wrap">
+          <span class="badge ok">LIVE · backend</span>
+          <span class="badge">{{ w.type }}</span>
+          @if (w.coldChainCapable) { <span class="badge">cold-chain capable</span> }
+        </div>
+        <div class="kv">
+          <div><label>In-charge</label><span>{{ w.incharge || '—' }}</span></div>
+          <div><label>Phone</label><span>{{ w.phone || '—' }}</span></div>
+          <div><label>Division</label><span>{{ w.division || '—' }}</span></div>
+          <div><label>Stock lines</label><span>{{ w.stockLines }}</span></div>
+          <div style="grid-column:1/-1"><label>Address</label><span>{{ w.address || '—' }}</span></div>
+          <div><label>Total stock (qty)</label><span>{{ w.totalStock | number }}</span></div>
+          <div><label>Cold-chain units</label><span>{{ w.coldChainUnits.length }}</span></div>
+        </div>
+      </div>
+
+      @if (w.coldChainUnits.length > 0) {
+        <div class="card">
+          <h4 style="margin-top:0">Cold-chain equipment <small style="color:#6b7d90; font-weight:normal">(from Asset register)</small></h4>
+          <table>
+            <thead><tr><th>Tag</th><th>Name</th><th>Model</th><th>Status</th><th>Condition</th></tr></thead>
+            <tbody>
+              @for (u of w.coldChainUnits; track u.assetTag) {
+                <tr>
+                  <td>{{ u.assetTag }}</td>
+                  <td>{{ u.name }}</td>
+                  <td style="color:#6b7d90">{{ u.model || '—' }}</td>
+                  <td><span class="badge {{ u.status === 'Active' ? 'ok' : u.status === 'BreakdownReported' ? 'bad' : 'warn' }}">{{ u.status }}</span></td>
+                  <td>{{ u.condition }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      <div class="card">
+        <h4 style="margin-top:0">Live stock <small style="color:#6b7d90; font-weight:normal">(batches in store)</small></h4>
+        @if (w.stock.length > 0) {
+          <table>
+            <thead><tr><th>Item</th><th>Batch</th><th>Qty</th><th>Expiry</th><th>Cold-chain</th></tr></thead>
+            <tbody>
+              @for (v of w.stock; track v.batch) {
+                <tr>
+                  <td>
+                    {{ v.drug }}
+                    @if (v.isVaccine) { <span class="badge ok" style="margin-left:.2rem">vaccine</span> }
+                  </td>
+                  <td>{{ v.batch }}</td>
+                  <td>{{ v.quantity | number }} {{ v.unit }}</td>
+                  <td>
+                    {{ v.expiry }}
+                    @if (v.daysToExpiry < 0) { <span class="badge bad">expired</span> }
+                    @else if (v.daysToExpiry <= 90) { <span class="badge warn">{{ v.daysToExpiry }}d</span> }
+                  </td>
+                  <td>
+                    @if (v.coldChainRequired) {
+                      <span class="badge warn" title="Requires cold chain">
+                        {{ v.storageTempMin != null ? v.storageTempMin + '…' + v.storageTempMax + '°C' : 'cold-chain' }}
+                      </span>
+                    } @else { <span style="color:#94a3b8">ambient</span> }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        } @else {
+          <div style="color:#94a3b8; font-size:.85rem">No batches currently in store at this warehouse.</div>
+        }
       </div>
     }
 

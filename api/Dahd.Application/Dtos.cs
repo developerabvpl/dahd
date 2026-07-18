@@ -404,3 +404,18 @@ public record AssetKpiDto(
     int WarrantyExpiring60Days, int WarrantyExpired,
     int CalibrationDue60Days, int CalibrationOverdue,
     int OpenCriticalIncidents, int SlaBreachedIncidents, decimal AmcAnnualCostTotal);
+
+// ---- Network map (live layer) ----
+
+public record MapStockLine(
+    string Drug, string Code, bool IsVaccine, bool ColdChainRequired,
+    decimal? StorageTempMin, decimal? StorageTempMax,
+    string Batch, decimal Quantity, string Unit, DateOnly Expiry, int DaysToExpiry);
+
+public record MapColdUnitDto(string AssetTag, string Name, string? Model, string Status, string Condition);
+
+public record MapWarehouseDto(
+    Guid Id, string Code, string Name, string Type, string? District, string? Division,
+    bool ColdChainCapable, string? Incharge, string? Phone, string? Address,
+    decimal TotalStock, int StockLines,
+    IReadOnlyList<MapColdUnitDto> ColdChainUnits, IReadOnlyList<MapStockLine> Stock);

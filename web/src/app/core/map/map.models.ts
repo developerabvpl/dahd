@@ -94,3 +94,58 @@ export interface GeoNetwork {
   stores: Store[];
   fieldForce: FieldForce[];
 }
+
+// ---- Live layer (real backend warehouses/stock) ----
+
+export interface MapStockLine {
+  drug: string;
+  code: string;
+  isVaccine: boolean;
+  coldChainRequired: boolean;
+  storageTempMin?: number;
+  storageTempMax?: number;
+  batch: string;
+  quantity: number;
+  unit: string;
+  expiry: string;
+  daysToExpiry: number;
+}
+
+export interface MapColdUnit {
+  assetTag: string;
+  name: string;
+  model?: string;
+  status: string;
+  condition: string;
+}
+
+export interface MapWarehouse {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+  district?: string;
+  division?: string;
+  coldChainCapable: boolean;
+  incharge?: string;
+  phone?: string;
+  address?: string;
+  totalStock: number;
+  stockLines: number;
+  coldChainUnits: MapColdUnit[];
+  stock: MapStockLine[];
+  // populated client-side after geocoding
+  lat?: number;
+  lng?: number;
+}
+
+// Per-district roll-up used for choropleth shading.
+export interface DistrictShade {
+  district: string;
+  lat: number;
+  lng: number;
+  stores: number;
+  alarms: number;      // cold-chain units in alarm across the district
+  units: number;
+  alarmRatio: number;  // 0..1
+}

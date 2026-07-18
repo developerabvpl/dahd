@@ -1,7 +1,10 @@
-import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 import {
-  ColdChainKind, ColdChainUnit, FieldForce, FieldStatus, GeoNetwork,
-  Sensor, Store, Toolbox, VaccineStock
+  ColdChainKind, ColdChainUnit, DistrictShade, FieldForce, FieldStatus, GeoNetwork,
+  MapWarehouse, Sensor, Store, Toolbox, VaccineStock
 } from './map.models';
 
 // Uttar Pradesh districts with approximate centroids [name, lat, lng].
@@ -56,7 +59,36 @@ function mulberry32(seed: number) {
 
 @Injectable({ providedIn: 'root' })
 export class MapService {
+  private readonly http = inject(HttpClient);
   private cache: GeoNetwork | null = null;
+
+  /** Real backend warehouses + live stock + cold-chain equipment (Network Map "Live" layer). */
+  liveWarehouses(): Observable<MapWarehouse[]> {
+    return this.http.get<MapWarehouse[]>(`${environment.apiUrl}/map/warehouses`);
+  }
+
+  /** Place a real warehouse on the map from its district (or a district name inside its title). */
+  geocode(district?: string | null, name?: string | null): { lat: number; lng: number } | null {
+    const hay = `${district ?? ''} ${name ?? ''}`.toLowerCase();
+    const hit = DISTRICTS.find(([d]) => hay.includes(d.toLowerCase()))
+      ?? (district ? DISTRICTS.find(([d]) => district.toLowerCase().includes(d.toLowerCase())) : undefined);
+    return hit ? { lat: hit[1], lng: hit[2] } : null;
+  }
+
+  /** Per-district cold-chain health roll-up (from the full-state demo network) for choropleth shading. */
+  districtShades(): DistrictShade[] {
+    const net = this.network();
+    return DISTRICTS.map(([district, lat, lng]) => {
+      const inDistrict = net.stores.filter(s => s.district === district);
+      const units = inDistrict.reduce((n, s) => n + s.units.length, 0);
+      const alarms = inDistrict.reduce((n, s) => n + s.alarms, 0);
+      return {
+        district, lat, lng,
+        stores: inDistrict.length, units, alarms,
+        alarmRatio: units ? alarms / units : 0
+      };
+    });
+  }
 
   network(): GeoNetwork {
     if (this.cache) return this.cache;
