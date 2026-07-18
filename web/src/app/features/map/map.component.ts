@@ -30,7 +30,7 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   private liveByCanon = new Map<string, MapWarehouse>();
   private liveMarkerByCanon = new Map<string, L.Marker>();
 
-  private readonly popupOpts: L.PopupOptions = { maxWidth: 360, minWidth: 300, maxHeight: 440, className: 'dahd-info', autoPan: true };
+  private readonly popupOpts: L.PopupOptions = { maxWidth: 520, minWidth: 420, maxHeight: 460, className: 'dahd-info', autoPan: true };
 
   readonly net: GeoNetwork = this.svc.network();
 

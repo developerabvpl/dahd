@@ -119,8 +119,12 @@ if (!app.Environment.IsDevelopment())
 // Serve the built Angular UI from wwwroot when present (single-process deploy:
 // one Kestrel process hosts both the API and the SPA). No-op in dev, where the
 // frontend is served by `ng serve` and there is no wwwroot.
+// Register .geojson (not a built-in MIME type) so the Network Map's district
+// boundary asset is served instead of 404'ing.
+var contentTypes = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+contentTypes.Mappings[".geojson"] = "application/geo+json";
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions { ContentTypeProvider = contentTypes });
 
 app.UseAuthentication();
 app.UseAuthorization();
