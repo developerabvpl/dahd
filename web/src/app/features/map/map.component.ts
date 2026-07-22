@@ -20,9 +20,9 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   private readonly mapEl = viewChild.required<ElementRef<HTMLDivElement>>('map');
 
   private map?: L.Map;
-  private storeCluster = L.markerClusterGroup({ maxClusterRadius: 55, chunkedLoading: true });
-  private fieldCluster = L.markerClusterGroup({ maxClusterRadius: 55, chunkedLoading: true });
-  private liveCluster = L.markerClusterGroup({ maxClusterRadius: 45, chunkedLoading: true });
+  private storeCluster!: L.MarkerClusterGroup;
+  private fieldCluster!: L.MarkerClusterGroup;
+  private liveCluster!: L.MarkerClusterGroup;
   private boundaryLayer?: L.GeoJSON;
 
   private healthByCanon = new Map<string, number>();
@@ -49,7 +49,29 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     this.zone.runOutsideAngular(() => this.initMap());
   }
 
+  /**
+   * Resolve the markercluster factory at call time. `import * as L` from the CJS
+   * leaflet package yields a namespace *copy*, which doesn't always carry the
+   * plugin's patch once the production build optimises the interop — so fall back
+   * to the global Leaflet object that the plugin actually patched. Degrades to a
+   * plain layer group rather than blanking the map if the plugin is missing.
+   */
+  private clusterGroup(opts: L.MarkerClusterGroupOptions): L.MarkerClusterGroup {
+    const anyL = L as any;
+    const globalL = (globalThis as any).L;
+    const factory = anyL.markerClusterGroup ?? globalL?.markerClusterGroup;
+    if (typeof factory !== 'function') {
+      console.warn('leaflet.markercluster unavailable — falling back to an unclustered layer.');
+      return L.layerGroup() as unknown as L.MarkerClusterGroup;
+    }
+    return factory(opts);
+  }
+
   private initMap(): void {
+    this.storeCluster = this.clusterGroup({ maxClusterRadius: 55, chunkedLoading: true });
+    this.fieldCluster = this.clusterGroup({ maxClusterRadius: 55, chunkedLoading: true });
+    this.liveCluster = this.clusterGroup({ maxClusterRadius: 45, chunkedLoading: true });
+
     const map = L.map(this.mapEl().nativeElement, { center: [27.2, 80.6], zoom: 7 });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18, attribution: '© OpenStreetMap contributors'
@@ -97,7 +119,10 @@ export class MapComponent implements AfterViewInit, OnDestroy {
               { sticky: true });
             lyr.on('click', () => {
               const m = this.liveMarkerByCanon.get(canon);
-              if (m) this.liveCluster.zoomToShowLayer(m, () => m.openPopup());
+              if (!m) return;
+              const zoomToShow = (this.liveCluster as any).zoomToShowLayer;
+              if (typeof zoomToShow === 'function') zoomToShow.call(this.liveCluster, m, () => m.openPopup());
+              else m.openPopup();
             });
           }
         });
